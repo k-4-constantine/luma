@@ -1,0 +1,224 @@
+Variable Information,
+Variable,Label
+nr,nr start rct
+block,block
+nrendrct,nr end rct
+nrafterprov,nr after provocation
+birthdate,month and year of birth
+group,"group 1, group 2"
+sexe,sexe
+datestudyentry,date of entry study
+age,age at start inca
+parentsituation,"2 parents, 1 parent, co-parenting, foster, adoption"
+nativeimm,native or immigrant
+nrweekspregnancy,"more than 38 wks home birth, more than 38 wks hospital, less 36 wks, less 32 wks"
+problpregn,"no problems, alcohol during pregnancy, smoking during pregnancy, illness mother, medication mother"
+problbirthchild,"no problems, hypoxia, incubated, refuses to drink"
+startbehprobl,time of start behavioural problems
+behaviouralresearch,behavioural research before start INCA
+medicationchild,medication before inca
+INCAdiet,"Extended diet, extended without wheat, few foods diet, no perseverance"
+locforcompleted,"RCT (wk0-wk13), completed or LOFC"
+reasonleaving,reason leaving INCA-study during RCT and during diet gr2
+PTconclADHDresp,"concl end RCT, parent and teacher, wk 9 gr 1, and wk 13 gr 2, ADHD"
+TconcODDresp,"concl end RCT school, wk 9 gr 1, and wk 13 gr 2, ODD"
+TconcCDresp,"concl end RCT school, wk 9 gr 1, and wk 13 gr 2, CD"
+Pcrsstart,"conners rating scale, wk 0, gr 1 and gr 2, at start RCT"
+Pcrswk3,"conners rating scale, wk 3, gr 1 and gr 2"
+Pcrsend,"conners rating scale, wk 9 gr 1, wk 13 gr 2, at end RCT"
+Pcrswk9gr2,"conners rating scale, wk 9 gr 2"
+Pcrswk11gr2,"conners rating scale, wk 11 gr 2"
+Pcrsafterprov1,"conners rating scale, after first provocation gr 1 and gr 2"
+Pcrsafterprov2,"conners rating scale, after second provocation gr 1 and gr 2"
+BLPmomentthirdmeas,moment third measurement
+Pcrsafterprovthirdmeas,"conners rating scale, after provocation, 3d measurement, gr 1"
+arscritinattstart,"ADHD rating scale, number of inatt. criteria, wk 0, gr 1 and gr 2, at start RCT"
+arscritinattwk3,"ADHD rating scale, number of inatt. criteria, wk 3, gr 1 and gr 2"
+arscritinattend,"ADHD rating scale, number of inatt. criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+arscritinattwk9gr2,"ADHD rating scale, number of inatt. criteria, wk 9 gr 2"
+arscritinattwk11gr2,"ADHD rating scale, number of inatt. criteria, wk 11 gr 2"
+arscritinattafterprov1,"ADHD rating scale, number of inatt. criteria, after first provocation gr 1 and gr 2"
+arscritinattafterprov2,"ADHD rating scale, number of inatt. criteria, after second provocation gr 1 and gr 2"
+arscrithypstart,"ADHD rating scale, number of hyper. criteria, wk 0, gr 1 and gr 2, at start RCT"
+arscrithypwk3,"ADHD rating scale, number of hyper. criteria, wk 3, gr 1 and gr 2"
+arscrithypend,"ADHD rating scale, number of hyper. criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+arscrithypwk9gr2,"ADHD rating scale, number of hyper. criteria, wk 9 gr 2"
+arscrithypwk11gr2,"ADHD rating scale, number of hyper. criteria, wk 11 gr 2"
+arscrithypafterprov1,"ADHD rating scale, number of hyper. criteria, after first provocation gr 1 and gr 2"
+arscrithypafterprov2,"ADHD rating scale, number of hyper. criteria, after second provocation gr 1 and gr 2"
+arscrittotstart,"ADHD rating scale, total number of criteria, wk 0, gr 1 and gr 2, at start RCT"
+BLParscrittotstart,"Blinded paediatrician ADHD rating scale, total number of criteria, wk 0, gr 1 and gr 2, at start RCT"
+BLParscrittotend,"Blinded paediatrician ADHD rating scale, total number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLParscrittotafterprov,"Blinded Paediatrician, ADHD rating scale, total number of criteria, after provocation, 3d measurement, gr 1"
+BLPdiagnadhdstart,"Blinded paediatrician ADHD diagnosis, wk 0, gr 1 and gr 2, at start RCT"
+BLPdiagnadhdend,"Blinded paediatrician ADHD diagnosis, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPdiagnadhdafterprov,"Blinded paediatrician ADHD diagnosis, after provociation, 3d measurement, gr 1"
+arscrittotwk3,"ADHD rating scale, total number of criteria, wk 3, gr 1 and gr 2"
+arscrittotend,"ADHD rating scale, total number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+arscrittotwk9gr2,"ADHD rating scale, total number of criteria, wk 9 gr 2"
+arscrittotwk11gr2,"ADHD rating scale, total number of criteria, wk 11 gr 2"
+arscrittotafterprov1,"ADHD rating scale, total number of criteria, after first provocation gr 1 and gr 2"
+arscrittotafterprov2,"ADHD rating scale, total number of criteria, after second provocation gr 1 and gr 2"
+Parscrittotafterprovthirdmeas,"ADHD rating scale, total number of criteria, after provocation, 3d measurement, gr 1"
+inattpointsstart,"ADHD rating scale, total inatt. points, wk0, gr 1 and gr 2, at start RCT"
+inattpointswk3,"ADHD rating scale, total inatt. points, wk 3, gr 1 and gr 2"
+inattpointsend,"ADHD rating scale, total inatt. points, wk 9 gr 1, wk 13 gr 2, at end RCT"
+inattpointswk9gr2,"ADHD rating scale, total inatt. points, wk 9 gr 2"
+inattpointswk11gr2,"ADHD rating scale, total inatt. points, wk 11 gr 2"
+inattpointsafterprov1,"ADHD rating scale, total inatt. points, after first provocation gr 1 and gr 2"
+inattpointsafterprov2,"ADHD rating scale, total inatt. points, after second provocation gr 1 and gr 2"
+Pinattpointsafterprovthirdmeas,"ADHD rating scale, total inatt. points, after provocation, 3d measurement"
+hyperpointsstart,"ADHD rating scale, total hyper. points, wk0, gr 1 and gr 2, at start RCT"
+hyperpointswk3,"ADHD rating scale, total hyper. points, wk 3, gr 1 and gr 2"
+hyperpointsend,"ADHD rating scale, total hyper. points, wk 9 gr 1, wk 13 gr 2, at end RCT"
+hyperpointswk9gr2,"ADHD rating scale, total hyper. points, wk 9 gr 2"
+hyperpointswk11gr2,"ADHD rating scale, total hyper. points, wk 11 gr 2"
+hyperpointsafterprov1,"ADHD rating scale, total hyper. points, after first provocation gr 1 and gr 2"
+hyperpointsafterprov2,"ADHD rating scale, total hyper. points, after second provocation gr 1 and gr 2"
+Phyperpointsafterprovthirdmeas,"ADHD rating scale, total hyper. points, after provocation 3d measurement"
+BLPinattpointsstart,"Blinded Paediatrician ADHD rating scale, total inatt. points, wk0, gr 1 and gr 2, at start RCT"
+BLPinattpointsend,"Blinded Paediatrician ADHD rating scale, total inatt. points, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPinattpointsafterprov,"Blinded Padiatrician ADHD rating scale, total inatt. points, after provocation 3d measurement gr 1 "
+BLPhyperpointsstart,"Blinded paediatrician ADHD rating scale, total hyper. points, wk0, gr 1 and gr 2, at start RCT"
+BLPhyperpointsend,"Blinded Paediatrician ADHD rating scale, total hyper. points, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPhyperpointsafterprov,"Blinded Paediatrician ADHD rating scale, total hyper points, after provocation 3d measurement gr 1"
+BLPtotalpointsstart,"BLP total points start, week 0, gr 1 and gr 2"
+BLPtotalpointsend,"BLP total points end, wk 9 gr 1, wk 13 gr 2"
+BLPrespADHDtotalpoints,"Blinded Paediatrician ADHDtotal points responder at end RCT, 40% improvement"
+BLPtotalpointsafterprov,"BLP total points after provocation, gr 1"
+BLPrelapseafterprov,BLP relapse > 60% ARS total points after provocation
+totalpointsstart,"ADHD rating scale, total points, wk0, gr 1 and gr 2, at start RCT"
+totalpointswk3,"ADHD rating scale, total points, wk 3, gr 1 and gr 2"
+totalpointsend,"ADHD rating scale, total points, wk 9 gr 1, wk 13 gr 2, at end RCT"
+totalpointswk9gr2,"ADHD rating scale, total points, wk 9 gr 2"
+totalpointswk11gr2,"ADHD rating scale, total points, wk 11 gr 2"
+totalpointsafterprov1,"ADHD rating scale, total points, after first provocation gr 1 and gr 2"
+totalpointsafterprov2,"ADHD rating scale, total points, after second provocation gr 1 and gr 2"
+critoddstart,"ODD number of criteria, gr 1 and gr 2, at start RCT"
+critoddend,"ODD number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPdiagnODDstart,"Blinded Paediatrician diagnosis ODD start, gr 1 and gr 2, at start RCT"
+BLPdiagnODDend,"Blinded Paediatrician diagnosis ODD end, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPcritODDstart,"Blinded Paediatrician ODD number of criteria, gr 1 and gr 2, at start RCT"
+BLPcritODDend,"Blinded Paediatrician ODD number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPrespODD,"Blinded Paediatrician ODD responder at end RCT, 40% improvement"
+BLPcritoddafterprov,"Blinded paediatrician ODD number of criteria, after provocation, 3d measurement gr 1"
+critoddwk9gr2,"ODD number of criteria, wk 9 gr 2"
+critoddafterprov1,"ODD number of criteria, after first provocation gr 1 and gr 2"
+critoddafterprov2,"ODD number of criteria, after second provocation gr 1 and gr 2"
+Pcritoddafterprovthirdmeas,"ODD number of criteria, after provocation 3d measurement gr 1 "
+critCDstart,"CD number of criteria, gr 1 and gr 2, at start RCT"
+critCDend,"CD number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPdiagnCDstart,"Blinded Paediatrician diagnosis CD, gr 1 and gr 2, at start RCT"
+BLPdiagnCDend,"Blinded Paediatrician diagnosis CD, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPcritCDstart,"Blinded Paediatrician CD number of criteria, gr 1 and gr 2, at start RCT"
+BLPcritCDend,"Blinded Paediatrician CD number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+BLPrespCD,"Blinded Paediatrician CD responder at end RCT, 40% improvement"
+BLPcritCDafterprov,"Blinded Paediatrician CD number of criteria, after provocation 3d measurement gr 1 "
+critCDwk9gr2,"CD number of criteria, wk 9 gr 2"
+critCDafterprov1,"CD number of criteria, after first provocation gr 1 and gr 2"
+critCDafterprov2,"CD number of criteria, after second provocation gr 1 and gr 2"
+PcritCDafterprovthirdmeas,"CD number of criteria, after provocation 3d measurement gr 1"
+TCRSstart,"Teacher conners rating scale, wk 0, gr 1 and gr 2, at start RCT"
+TCRSend,"Teacher  conners rating scale, wk 9 gr 1, wk 13 gr 2, at end RCT"
+TdiagnADHDstart,"Teacher diagnosis ADHD, wk 0, gr 1 and gr 2, at start RCT"
+TdiagnADHDend,"Teacher diagnosis ADHD, wk 9 gr 1, wk 13 gr 2, end RCT"
+TARScritinattstart,"Teacher ADHD rating scale, number of inatt. criteria, wk 0, gr 1 and gr 2, at start RCT"
+TARScritinattend,"Teacher ADHD rating scale, number of inatt. criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+TARScrithypstart,"Teacher ADHD rating scale, number of hyper. criteria, wk 0, gr 1 and gr 2, at start RCT"
+TARScrithypend,"Teacher ADHD rating scale, number of hyper. criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+TARScrittotstart,"Teacher ADHD rating scale, total number of criteria, wk 0, gr 1 and gr 2, at start RCT"
+TARScrittotend,"Teacher ADHD rating scale, total number of criteria, wk 9 gr 1, wk 13 gr 2, at end RCT"
+Tinattpointsstart,"Teacher ADHD rating scale, total inatt. points, wk0, gr 1 and gr 2, at start RCT"
+Tinattpointsend,"Teacher ADHD rating scale, total inatt. points, wk9 gr 1, wk 13 gr 2, at end RCT"
+Thyperpointsstart,"Teacher ADHD rating scale, total hyper. points, wk0, gr 1 and gr 2, at start RCT"
+Thyperpointsend,"Teacher ADHD rating scale, total hyper. points, wk9 gr 1, wk 13 gr 2, at end RCT"
+Ttotalpointsstart,"Teacher ADHD rating scale, total points, wk0, gr 1 and gr 2, at start RCT"
+Ttotalpointsend,"Teacher ADHD rating scale, total points, wk9 gr 1, wk 13 gr 2, at end RCT"
+TdiagnODDstart,"Teacher diagnosis ODD wk 0, gr 1 and gr 2, at start RCT"
+TdiagnODDend,"Teacher diagnosis ODD, wk 9 gr 1, wk 13 gr 2, end RCT"
+TcritODDstart,"Teacher ODD number of criteria, gr 1 and gr 2, at start RCT"
+TcritODDend,"Teacher ODD number of criteria, wk 9 gr 1, wk 13 gr 2, end RCT"
+provocationIgG,First provocation A or B
+IgG0provreaction,IgG0provocation with or without return behavioural problems
+IgG4provreaction,IgG4provocation with or without return behavioural problems
+BLPrelapseprov,moment third measurement
+firstprovocation0or4,first provocation is IgG0 or IgG4
+IGG0reactie,reactie IgG0provocation with or without return behavioural problems
+IGG4reactie,reactie IgG4provocation with or without return behavioural problems
+provreaction1or2or0,"reaction to IgG0, IgG4,both or no provocation"
+IgEtotstart,TotaI IgE normal or increased at start RCT
+IgEtotend,Total IgE normal or increased at end RCT
+IgEtotfoodstart,Increased IgE specific for all foods at start RCT
+IgEtotfoodend,Increased IgE specific for all foods at end RCT
+IgEspecfoodsstart,Increased IgE specific for 6 foods at start RCT
+IgEspecfoodend,Increased IgE specific for 6 foods at end RCT
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,

@@ -1,0 +1,260 @@
+Variable Values,,
+Value,,Label
+group,1,diet group
+,2,control group
+sexe,m,boy
+,f,girl
+parentsituation,1,2 parents
+,2,1 parent
+,3,co parentship
+,4,"foster child, 2 foster parents, no visiting  arrangements biological parents"
+,5,"foster child, 2 foster parents, with visiting arrangement biological parents"
+,6,"adopted child, 2 parents"
+nativeimm,1,native parents
+,2,immigrant parents
+,3,one native and one immigrant parent
+,4,belgian family
+nrweekspregnancy,1,"38 wks or more, home"
+,2,"38 wks or more, hospital"
+,3,37 weeks
+,4,33-36 weeks 
+,5,32 wks or less
+,6,unknown
+problpregn,1,no problems
+,2,alcohol during pregnancy
+,3,smoking during pregnancy
+,4,illness mother during pregnancy
+,5,medication mother during pregnancy
+,6,unknown
+,7,drugs mother during pregnancy
+problbirthchild,1,no problems
+,2,protracted delivery
+,5, hypoxia
+,6, incubated
+,7, hypoxia and incubated 
+,8,refuses to drink
+,9,unknown
+startbehprobl,1,since birth
+,2,age 1
+,3,age 2-3 
+,4,"at school, age 4"
+,5,unknown
+behaviouralresearch,1,ADHD diagnosis made preceding start inca
+,2,"research started preceding INCA, not finished yet"
+,3,no research preceding inca
+,4,diagnosis adhd en odd preceding inca
+,5,diagnosis adhd en pddnos preceding inca
+,6,diagnosis ADHD and attachement disorder
+,7,diagnosis ODD preceding inca
+,8,diagnosis CD preceding INCA
+,9,diagnosis pddnos preceding inca
+,10,diagnosis learning disability preceding inca
+,11,diagnosis ADHD and tic disorder preceding inca
+medicationchild,1,never had adhd-medication
+,2,had medication with favourable effects
+,3,had medication but no or opposite effect
+INCAdiet,1,extended diet
+,2,without wheat
+,3,few foods diet
+,4,stopped in first week of diet
+,5,stopped when diet had to be adapted
+,6,"stopped, no compliance parents"
+,7,"stopped, no compliance child"
+,8,"stopped before start diet, diet group "
+,9,"stopped before start diet, control group "
+,10,few foods and antibiotics
+,11,"without wheat, no further adaption diet "
+,12,extended diet and many dietary mistakes reported after visit peadiatrician 
+,13,"stopped, child fell ill during diet "
+locforcompleted,1,RCT completed
+,2,"locf following 1st measurement, wk 0"
+,3,"locf following 2nd measurement, wk 3"
+,4,"locf following 3rd measurement, wk 9"
+,5,"locf following 4th measurement, wk 11"
+,6,"responder, not starting dbpc prov"
+,7,"RCT completed, stopped during dbpc provocation, gr 1"
+reasonleaving,1,no reason reported group 1
+,2,no reason reported group 2
+,3,no compliance diet parents group 1
+,4,no compliance diet parents group 2
+,5,"waiting lasted too long, group 2"
+,6,"child fell ill, group 1"
+,7,child does not like the diet food group 1
+,8,parents pity the child group 1
+,9,parents not motivated to start the diet group 1
+,10,child does not like the diet food group 2
+,11,child secretly eats other foods group 1
+,12,child secretly eats other foods group 2
+,13,mother fell ill before start diet group 2
+,14,parents not motivated to start the diet group 2
+,15,parents divorced during inca group 2
+,22,n/a
+PTconclADHDresp,1,"responder, parent and teacher, at least 40% improvement ACS or ARS"
+,2,"nonresponder, parent and teacher, less than 40% improvement both ACS and ARS"
+,3,"responder parent, nonresponder teacher"
+,4,"nonresponder parent, responder teacher"
+,5,"responder parent, no data teacher"
+,6,"nonresponder parent, no data teacher"
+,7,no compliance
+TconcODDresp,1,"responder, not meeting criteria ODD, at least 35% improvement"
+,2,nonresponder
+,3,n/a
+,4,no compliance RCT
+,5,no data end diet
+TconcCDresp,1,"responder, not meeting criteria CD , at least 35% improvement"
+,2,nonresponder
+,3,n/a
+,4,no compliance RCT
+,5,no data end diet
+BLPmomentthirdmeas,1,"after 1st prov, relapse > 60% "
+,2,"after 2d prov, relapse> 60%"
+,3,"after 2d prov, no relapse"
+,4,n/a
+,5,"after 1st prov, no relapse"
+BLPdiagnadhdstart,1,combined subtype ADHD 
+,2,inattention subtype ADHD 
+,3,hyperactive/impulsive subtype ADHD
+,4,not meeting criteria ADHD
+,5,n /a
+,,no data
+BLPdiagnadhdend,1,combined subtype ADHD 
+,2,inattention subtype ADHD 
+,3,hyperactive/impulsive subtype ADHD
+,4,not meeting criteria ADHD
+,5,"n /a, stopped during RCT"
+,,no data
+BLPdiagnadhdafterprov,1,combined subtype ADHD 
+,2,inattention subtype ADHD 
+,3,hyperactive/impulsive subtype ADHD
+,4,not meeting criteria ADHD
+,5,n /a
+,,no data
+BLPrespADHDtotalpoints,1,resp
+,2,nonresp
+,3,n/a
+BLPrelapseafterprov,1,relapse
+,2,no relapse
+BLPdiagnODDstart,1,ODD
+,2,no ODD
+,3,n/a
+BLPdiagnODDend,1,ODD
+,2,no ODD
+,3,n/a
+BLPrespODD,1,resp
+,2,nonresp
+,3,no ODD at start
+,4,n/a
+BLPdiagnCDstart,1,CD
+,2,no CD
+,3,n/a
+BLPdiagnCDend,1,CD
+,2,no CD
+,3,n/a
+BLPrespCD,1,resp
+,2,nonresp
+,3,No CD at start
+,4,n/a
+TCRSstart,,no data
+TCRSend,,no data
+TdiagnADHDstart,1,combined subtype ADHD 
+,2,inattention subtype ADHD 
+,3,hyperactive/impulsive subtype ADHD
+,4,not meeting criteria ADHD
+,5,no participation Teacher
+,,no data
+TdiagnADHDend,1,combined subtype ADHD 
+,2,inattention subtype ADHD 
+,3,hyperactive/impulsive subtype ADHD
+,4,not meeting criteria ADHD
+,5,n/a stopped during RCT
+,,no data
+Trespbasedontotalpoints,1,responder
+,2,nonresponder
+,3,n/a
+TdiagnODDstart,1,"Yes, 4 or more criteria"
+,2,"no, not meeting ODD criteria"
+,3,no participation teacher
+,,no data
+TdiagnODDend,1,"Yes, 4 or more criteria"
+,2,"no, not meeting ODD criteria"
+,3,n/a stopped during RCT
+,,no data
+provocationIgG,1,A IgG0 provocation
+,2,A IgG4 provocation 
+,3,B IgG0 provocation
+,4,B IgG4 provocation
+,5,n/a
+,6,"stopped RCT, gr 2"
+,7,"didnt start diet after RCT, gr 2"
+,8,"stopped diet, gr 2"
+,9,"resp but did not start prov, gr 2"
+,10,"nonresp, gr 2"
+,11,"stopped RCT, gr 1"
+,12,"resp but did not start prov, gr 1"
+,13,"nonresp, gr 1"
+,14,"B IgG4, but stopped after randomisation"
+,15,"A IgG4, but stopped after randomisation"
+IgG0provreaction,1,No return behavioural problems after IgG0 provocation
+,2,return behavioural problems after IgG0 provocation
+,3,n/a
+,4,"randomised, but did not start provocations"
+IgG4provreaction,1,No return behavioural problems after IgG4 provocation
+,2,return behavioural problems after IgG4 provocation
+,3,n/a
+,4,"randomised, but did not start provocations"
+,5,no IgG4 scores
+BLPrelapseprov,1,"after 1st prov, relapse > 60% "
+,2,"after 2d prov, relapse> 60%"
+,3,"after 2d prov, no relapse"
+,4,n/a
+,5,"after 1st prov, no relapse"
+firstprovocation0or4,1,IgG0
+,2,IgG4
+IGG0reaction,1,No return behavioural problems after IgG0 provocation
+,2,return behavioural problems after IgG0 provocation
+IGG4reaction,1,No return behavioural problems after IgG4 provocation
+,2,return behavioural problems after IgG4 provocation
+provreaction1or2or0,1,IgG0 reaction
+,2,IgG4 reaction
+,3,both prov reaction
+,4,no reaction 
+IgEtotstart,1,normal 
+,2,increased 
+,3,missing
+,4,n/a
+IgEtotend,1,normal 
+,2,increased 
+,3,missing
+,4,n/a
+IgEtotfoodstart,1,normal values
+,2,increased
+,3,n/a
+IgEtotfoodend,1,normal values
+,2,increased
+,3,n/a
+IgEspecfoodsstart,1,normal values
+,2,incr chicken protein
+,3,incr peanut 
+,4,incr soy
+,5,incr milk
+,6,incr fish
+,7,incr wheat
+,8,n/a
+,9,"not assessed, tot foods normal"
+,10,"incr peanut, soy and milk"
+,11,incr chickenprot and milk
+,12,"incr chickenprot, milk, wheat"
+,14,incr chickenprot peanut
+IgEspecfoodend,1,normal values
+,2,incr chicken protein
+,3,incr peanut 
+,4,incr soy
+,5,incr milk
+,6,incr fish
+,7,incr wheat
+,8,n/a
+,9,"not assessed, tot foods normal"
+,10,"incr peanut, soy and milk"
+,11,incr chickenprot and milk
+,12,"incr chickenprot, milk, wheat"
+,13,"incr peanut, soy wheat"
