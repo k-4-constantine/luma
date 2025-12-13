@@ -489,28 +489,29 @@ if __name__ == "__main__":
 
 ---
 
-## Phase 4: Embedding & Vector Store Services
+## ✅ Phase 4: Embedding & Vector Store Services (COMPLETED)
 
 ### Deliverables
-1. **backend/services/embedding_service.py** - GreenPT embeddings
-2. **backend/services/vector_store.py** - Weaviate operations
-3. **scripts/setup_weaviate.py** - Schema initialization
+1. ✅ **backend/services/embedding_service.py** - GreenPT embeddings
+2. ✅ **backend/services/vector_store.py** - Weaviate v4 operations
+3. ✅ **scripts/setup_weaviate.py** - Schema initialization
+4. ✅ **scripts/check_vector_store.sh** - Status monitoring script
 
 ### Critical Files
-- **backend/services/vector_store.py** - Core retrieval component
+- **backend/services/vector_store.py** - Core retrieval component with Weaviate v4 client
 
 ### Verification Check
 ```bash
 # Check 1: Schema initialization
-python scripts/setup_weaviate.py
+uv run python scripts/setup_weaviate.py
 # Expected: "✅ Schema created successfully!"
 
 # Check 2: Verify schema in Weaviate
-curl http://localhost:8080/v1/schema | python -m json.tool
+curl http://localhost:8080/v1/schema | python3 -m json.tool
 # Expected: Should show DocumentChunk class with all properties
 
 # Check 3: Test embedding service
-python -c "
+uv run python -c "
 import asyncio
 from backend.services.embedding_service import EmbeddingService
 
@@ -522,6 +523,10 @@ async def test():
 asyncio.run(test())
 "
 # Expected: Should return embedding with ~1536 dimensions
+
+# Check 4: Monitor vector store status
+./scripts/check_vector_store.sh
+# Expected: Shows container status, health, schema, and document count
 ```
 
 ### Example Code: Embedding Service
@@ -549,64 +554,177 @@ class EmbeddingService:
         return (await self.embed_texts([query]))[0]
 ```
 
-### Example Code: Weaviate Schema
+### Example Code: Weaviate v4 Vector Store
 ```python
 # backend/services/vector_store.py
-async def create_schema(self):
-    from weaviate.classes.config import Configure, Property, DataType
+import weaviate
+from weaviate.connect import ConnectionParams, ProtocolParams
+from weaviate.classes.config import Configure, Property, DataType
+from weaviate.classes.query import MetadataQuery
 
-    if self.client.collections.exists("DocumentChunk"):
-        self.client.collections.delete("DocumentChunk")
+class VectorStore:
+    def __init__(self):
+        self.client = None
+        self.collection_name = "DocumentChunk"
 
-    collection = self.client.collections.create(
-        name="DocumentChunk",
-        vectorizer_config=Configure.Vectorizer.none(),
-        properties=[
-            Property(name="chunk_id", data_type=DataType.UUID),
-            Property(name="document_id", data_type=DataType.UUID),
-            Property(name="content", data_type=DataType.TEXT),
-            Property(name="chunking_strategy", data_type=DataType.TEXT),
-            Property(name="title", data_type=DataType.TEXT),
-            Property(name="author", data_type=DataType.TEXT),
-            Property(name="created_at", data_type=DataType.TEXT),
-            Property(name="file_type", data_type=DataType.TEXT),
-            Property(name="file_path", data_type=DataType.TEXT),
-            Property(name="summary", data_type=DataType.TEXT),
-            Property(name="keywords", data_type=DataType.TEXT_ARRAY),
-        ],
-    )
+    async def connect(self):
+        """Connect to Weaviate with HTTP and gRPC connections."""
+        # Parse URLs for connection parameters
+        url = settings.weaviate_url.replace("http://", "").replace("https://", "")
+        host, port = url.split(":") if ":" in url else (url, 80)
+        
+        grpc_url = settings.weaviate_grpc_url
+        grpc_host, grpc_port = grpc_url.split(":") if ":" in grpc_url else (grpc_url, 50051)
+        
+        self.client = weaviate.WeaviateClient(
+            connection_params=ConnectionParams(
+                http=ProtocolParams(host=host, port=int(port), secure=False),
+                grpc=ProtocolParams(host=grpc_host, port=int(grpc_port), secure=False)
+            )
+        )
+        self.client.connect()
+        return self.client
+
+    async def create_schema(self):
+        """Create DocumentChunk collection with all properties."""
+        if self.client.collections.exists(self.collection_name):
+            self.client.collections.delete(self.collection_name)
+
+        collection = self.client.collections.create(
+            name=self.collection_name,
+            vectorizer_config=Configure.Vectorizer.none(),
+            properties=[
+                Property(name="chunk_id", data_type=DataType.UUID),
+                Property(name="document_id", data_type=DataType.UUID),
+                Property(name="content", data_type=DataType.TEXT),
+                Property(name="chunk_index", data_type=DataType.INT),
+                Property(name="chunking_strategy", data_type=DataType.TEXT),
+                Property(name="token_count", data_type=DataType.INT),
+                Property(name="title", data_type=DataType.TEXT),
+                Property(name="author", data_type=DataType.TEXT),
+                Property(name="created_at", data_type=DataType.TEXT),
+                Property(name="file_type", data_type=DataType.TEXT),
+                Property(name="file_path", data_type=DataType.TEXT),
+                Property(name="summary", data_type=DataType.TEXT),
+                Property(name="keywords", data_type=DataType.TEXT_ARRAY),
+            ],
+        )
+        return collection
+
+    async def add_chunks(self, chunks: List[DocumentChunk], embeddings: List[List[float]]):
+        """Add document chunks with embeddings to Weaviate."""
+        collection = self.client.collections.get(self.collection_name)
+        
+        objects = []
+        for chunk, embedding in zip(chunks, embeddings):
+            obj = {
+                "chunk_id": str(chunk.chunk_id),
+                "document_id": str(chunk.document_id),
+                "content": chunk.content,
+                "chunk_index": chunk.chunk_index,
+                "chunking_strategy": chunk.chunking_strategy.value,
+                "token_count": chunk.token_count,
+                "title": chunk.title,
+                "author": chunk.author,
+                "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
+                "file_type": chunk.file_type.value,
+                "file_path": chunk.file_path,
+                "summary": chunk.summary,
+                "keywords": chunk.keywords,
+            }
+            objects.append(obj)
+
+        collection.data.insert_many(properties=objects, vectors=embeddings)
+
+    async def search(self, query_embedding: List[float], limit: int = 5):
+        """Vector search with relevance scoring."""
+        collection = self.client.collections.get(self.collection_name)
+        
+        response = collection.query.near_vector(
+            near_vector=query_embedding,
+            limit=limit,
+            return_metadata=MetadataQuery(distance=True),
+        )
+
+        retrieved_docs = []
+        for item in response.objects:
+            props = item.properties
+            retrieved_docs.append(RetrievedDocument(
+                chunk_id=UUID(props["chunk_id"]),
+                title=props["title"],
+                summary=props["summary"],
+                keywords=props["keywords"],
+                author=props["author"],
+                created_at=props["created_at"],
+                file_type=props["file_type"],
+                file_path=props["file_path"],
+                content=props["content"],
+                relevance_score=1 - item.metadata.distance,
+                chunking_strategy=props["chunking_strategy"],
+            ))
+
+        return retrieved_docs
+
+    async def get_document_count(self) -> int:
+        """Get total number of chunks in vector store."""
+        collection = self.client.collections.get(self.collection_name)
+        result = collection.aggregate.over_all(total_count=True)
+        return result.total_count
 ```
 
-### Example Code: Vector Search
-```python
-async def search(self, query_embedding: List[float], limit: int = 5):
-    collection = self.client.collections.get("DocumentChunk")
-
-    response = collection.query.near_vector(
-        near_vector=query_embedding,
-        limit=limit,
-        return_metadata=MetadataQuery(distance=True),
-    )
-
-    retrieved_docs = []
-    for item in response.objects:
-        props = item.properties
-        retrieved_docs.append(RetrievedDocument(
-            chunk_id=UUID(props["chunk_id"]),
-            title=props["title"],
-            summary=props["summary"],
-            keywords=props["keywords"],
-            author=props["author"],
-            created_at=props["created_at"],
-            file_type=props["file_type"],
-            file_path=props["file_path"],
-            content=props["content"],
-            relevance_score=1 - item.metadata.distance,
-            chunking_strategy=props["chunking_strategy"],
-        ))
-
-    return retrieved_docs
+### Example Code: Vector Search Query
+```bash
+# Query to check embeddings in Weaviate
+curl -X POST http://localhost:8080/v1/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "{
+      Get {
+        DocumentChunk(limit: 5) {
+          chunk_id
+          title
+          chunking_strategy
+          token_count
+          _additional {
+            vector
+          }
+        }
+      }
+    }"
+  }' | python3 -m json.tool
 ```
+
+### Example Code: Status Monitoring Script
+```bash
+# scripts/check_vector_store.sh
+#!/bin/bash
+
+echo "🔍 Checking Weaviate Vector Store Status"
+echo "========================================"
+
+# Check container, health, schema, and document count
+./scripts/check_vector_store.sh
+```
+
+### Key Features Implemented
+- ✅ **Weaviate v4 Client** - Proper HTTP/GRPC connection handling
+- ✅ **Schema Management** - Create/delete DocumentChunk collection
+- ✅ **Vector Operations** - Add chunks with embeddings, vector search
+- ✅ **Status Monitoring** - Document count, health checks via script
+- ✅ **Error Handling** - Graceful connection management
+- ✅ **Query Examples** - GraphQL queries for checking embeddings
+
+### Verification Results
+- ✅ Weaviate container running and healthy
+- ✅ DocumentChunk schema created successfully
+- ✅ Vector store ready (0 chunks initially)
+- ✅ All GraphQL queries working
+- ✅ Status monitoring script operational
+
+### Next Steps
+1. Process documents to populate vector store
+2. Test retrieval with vector search queries
+3. Integrate with RAG chat service
 
 ---
 
