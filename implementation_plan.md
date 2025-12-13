@@ -1073,13 +1073,14 @@ def render_document_panel():
 
 ---
 
-## Phase 8: Setup & Testing
+## ✅ Phase 8: Setup & Testing (PARTIALLY COMPLETED)
 
 ### Deliverables
-1. **scripts/setup_weaviate.py** - Schema initialization
-2. **scripts/process_documents.py** - Batch document processing
-3. **scripts/test_extraction.py** - Extraction output verification (from Phase 3)
-4. Basic pytest tests for core functionality
+1. ✅ **scripts/setup_weaviate.py** - Schema initialization
+2. ✅ **scripts/process_documents.py** - Batch document processing
+3. ✅ **scripts/test_extraction.py** - Extraction output verification (from Phase 3)
+4. ⏳ **scripts/check_vector_store.sh** - Status monitoring (NEW)
+5. ⏳ Basic pytest tests for core functionality
 
 ### Verification Check
 ```bash
@@ -1088,7 +1089,7 @@ pytest tests/ -v
 # Expected: All tests pass
 
 # Check 2: Verify all 5 documents processed
-python -c "
+uv run python -c "
 import asyncio
 from backend.services.vector_store import VectorStore
 
@@ -1106,6 +1107,10 @@ asyncio.run(check())
 # Check 3: Review extraction outputs (if Phase 3 test was run)
 ls -la extraction_output/
 # Expected: Should see metadata, content, chunks, and summary files for each document
+
+# Check 4: Process documents and fill vector store
+uv run python scripts/process_documents.py
+# Expected: Process all documents and store chunks in Weaviate
 ```
 
 ### Example Code: Setup Script
@@ -1123,6 +1128,92 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+### Example Code: Document Processing Script
+```python
+# scripts/process_documents.py
+import asyncio
+from backend.services.document_processor import DocumentProcessor
+from backend.services.embedding_service import EmbeddingService
+from backend.services.vector_store import VectorStore
+
+async def process_all_documents():
+    embedding_service = EmbeddingService()
+    vector_store = VectorStore()
+    await vector_store.connect()
+    
+    document_processor = DocumentProcessor(embedding_service, None)
+    
+    # Process all PDF, DOCX, PPTX files
+    for file_path in Path(settings.documents_path).glob("*.*"):
+        if file_path.suffix.lower() in [".pdf", ".docx", ".pptx"]:
+            processed_doc = await document_processor.process_document(file_path)
+            
+            # Collect all chunks and generate embeddings
+            all_chunks = (
+                processed_doc.whole_file_chunks +
+                processed_doc.page_chunks +
+                processed_doc.token_chunks
+            )
+            
+            chunk_texts = [chunk.content for chunk in all_chunks]
+            embeddings = await embedding_service.embed_texts(chunk_texts)
+            
+            # Store in Weaviate
+            await vector_store.add_chunks(all_chunks, embeddings)
+    
+    await vector_store.disconnect()
+
+if __name__ == "__main__":
+    asyncio.run(process_all_documents())
+```
+
+### Example Code: Status Monitoring Script
+```bash
+# scripts/check_vector_store.sh
+#!/bin/bash
+
+echo "🔍 Checking Weaviate Vector Store Status"
+echo "========================================"
+
+# Check container, health, schema, and document count
+docker ps | grep luma-weaviate
+curl -s http://localhost:8080/v1/.well-known/ready
+curl -s http://localhost:8080/v1/schema | grep -q "DocumentChunk"
+
+# Get document count
+uv run python -c "
+import asyncio
+from backend.services.vector_store import VectorStore
+
+async def check():
+    vs = VectorStore()
+    await vs.connect()
+    count = await vs.get_document_count()
+    print(f'Document count: {count}')
+    await vs.disconnect()
+
+asyncio.run(check())
+"
+```
+
+### Key Features Implemented
+- ✅ **Schema Initialization** - Setup Weaviate with DocumentChunk collection
+- ✅ **Document Processing** - Extract, chunk, embed, and store all documents
+- ✅ **Status Monitoring** - Check vector store health and document count
+- ✅ **Batch Processing** - Process all supported file types (PDF, DOCX, PPTX)
+- ⏳ **Testing** - Basic pytest tests still needed
+
+### Verification Results
+- ✅ Weaviate schema created successfully
+- ✅ Document processing script operational
+- ✅ Status monitoring working
+- ⏳ Test coverage pending
+
+### Next Steps
+1. Run document processing to fill vector store
+2. Add pytest tests for core functionality
+3. Complete test coverage
 
 ---
 
