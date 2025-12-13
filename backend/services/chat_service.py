@@ -24,3 +24,8 @@ class ChatService:
             temperature=temperature,
         )
         return response.choices[0].message.content
+
+    async def close(self):
+        """Close the OpenAI client connection."""
+        if self.client:
+            await self.client.close()

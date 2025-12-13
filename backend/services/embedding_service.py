@@ -26,3 +26,8 @@ class EmbeddingService:
         """Generate embedding for a single text."""
         embeddings = await self.embed_texts([text])
         return embeddings[0]
+
+    async def close(self):
+        """Close the OpenAI client connection."""
+        if self.client:
+            await self.client.close()

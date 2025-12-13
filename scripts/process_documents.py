@@ -11,6 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from backend.services.document_processor import DocumentProcessor
 from backend.services.embedding_service import EmbeddingService
 from backend.services.vector_store import VectorStore
+from backend.services.chat_service import ChatService
 from backend.config import settings
 
 
@@ -22,14 +23,15 @@ async def process_all_documents():
     # Initialize services
     embedding_service = EmbeddingService()
     vector_store = VectorStore()
-    
+    chat_service = ChatService()
+
     try:
         # Connect to Weaviate
         await vector_store.connect()
         print("✅ Connected to Weaviate")
-        
+
         # Initialize document processor
-        document_processor = DocumentProcessor(embedding_service, None)
+        document_processor = DocumentProcessor(embedding_service, chat_service)
         
         # Get documents path
         documents_path = Path(settings.documents_path)
@@ -103,7 +105,9 @@ async def process_all_documents():
         sys.exit(1)
     finally:
         await vector_store.disconnect()
-        print("✅ Disconnected from Weaviate")
+        await chat_service.close()
+        await embedding_service.close()
+        print("✅ Disconnected from all services")
 
 
 if __name__ == "__main__":

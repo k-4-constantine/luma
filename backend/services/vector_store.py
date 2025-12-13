@@ -4,6 +4,7 @@
 from typing import List
 from uuid import UUID
 import weaviate
+import weaviate.classes as wvc
 from weaviate.connect import ConnectionParams, ProtocolParams
 from weaviate.classes.config import Configure, Property, DataType
 from weaviate.classes.query import MetadataQuery
@@ -100,10 +101,10 @@ class VectorStore:
 
         collection = self.client.collections.get(self.collection_name)
 
-        # Prepare data for insertion
-        objects = []
+        # Prepare DataObject instances with properties and vectors
+        data_objects = []
         for chunk, embedding in zip(chunks, embeddings):
-            obj = {
+            properties = {
                 "chunk_id": str(chunk.chunk_id),
                 "document_id": str(chunk.document_id),
                 "content": chunk.content,
@@ -118,13 +119,17 @@ class VectorStore:
                 "summary": chunk.summary,
                 "keywords": chunk.keywords,
             }
-            objects.append(obj)
 
-        # Insert with vectors
-        collection.data.insert_many(
-            properties=objects,
-            vectors=embeddings
-        )
+            # Create DataObject with properties and vector
+            data_objects.append(
+                wvc.data.DataObject(
+                    properties=properties,
+                    vector=embedding
+                )
+            )
+
+        # Insert DataObjects
+        collection.data.insert_many(data_objects)
 
     async def search(self, query_embedding: List[float], limit: int = 5) -> List[RetrievedDocument]:
         """Search for similar documents using vector search."""
@@ -173,5 +178,6 @@ class VectorStore:
             await self.connect()
 
         if self.client.collections.exists(self.collection_name):
-            collection = self.client.collections.get(self.collection_name)
-            collection.data.delete_many()
+            # Delete and recreate the collection (fastest way to clear all data)
+            self.client.collections.delete(self.collection_name)
+            await self.create_schema()
