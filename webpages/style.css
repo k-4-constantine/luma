@@ -128,12 +128,17 @@ margin-right: 10px;
   
 }
 
+.chat-reply {
+  flex-direction: column;
+}
+
 .chat-bubble-bot {
-  background-color: #ccbbff;
-    border-top-right-radius: 1em;
+  background-color: #FFF0D7;
+  border-top-right-radius: 1em;
   border-bottom-right-radius: 1em;
   text-align: left;
   max-width: 40%;
+  margin-bottom: 10px;
 }
 
 .chat-human {
@@ -144,4 +149,28 @@ margin-right: 10px;
 .chat-reply {
   display: flex;
   justify-content: flex-start;
+}
+
+.feedback a:first-child {
+  padding-right: 0.2em;
+}
+
+.search-result {
+  border: 2px dotted #C9BEC0;
+  margin-top: 1.5em;
+  padding: 0 1em;
+}
+
+.feedback-article {
+  display: flex;
+  justify-content: space-between;
+  padding: 1em 0;
+}
+
+.article-email a {
+  display: block;
+  margin-top: 0.5em;
+  color: #524f47;
+  text-decoration: none;
+
 }
