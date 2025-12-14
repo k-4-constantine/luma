@@ -11,31 +11,8 @@ body {
     "wdth" 100;
 }
 
-#splash-screen {
-  max-width: 500px;
-  text-align: center;
-  margin:auto;
-}
-
-#splash-screen-panel {
-  justify-content: center;
-box-shadow: 14px 14px 14px rgba(0, 0, 0, 0.5);
-background-color: rgb(210,231,240);
-/* background-color: #bcd2ff; */
-  padding: 2em;
-}
-
-#splash-screen-nav {
-  display: flex;
-  justify-content: space-between;
-}
-
-.splash-screen-img {
-  max-width: 30vw;
-}
-
 h1 {
-    font-size: 2em;
+  font-size: 2em;
   color: #001158;
   font-family: "Noto Serif", serif;
   font-optical-sizing: auto;
@@ -48,4 +25,44 @@ h1 {
 #tag-line {
   font-size: 1.2em;
   font-weight: 500;
+}
+
+#splash-screen {
+  max-width: 300px;
+  text-align: center;
+  margin:auto;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+#splash-screen-panel {
+  justify-content: center;
+  box-shadow: 14px 14px 14px rgba(0, 0, 0, 0.5);
+  background-color: rgb(210,231,240);
+  /* background-color: #bcd2ff; */
+  padding: 1em 2em 1em 2em;
+}
+
+.splash-screen-logo {
+  margin: 1em 0 1em 0;
+}
+
+.splash-screen-img, .splash-screen-logo {
+  max-width: 30vw;
+}
+
+.splash-screen-img {
+
+}
+
+#onboard-nav {
+  display: flex;
+  justify-content: space-between;
+}
+
+#splash-screen-nav {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1em;
 }
