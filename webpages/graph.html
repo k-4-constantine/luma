@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <title>Document Knowledge Network</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+    <div id="container" style="height: 100%"></div>
+    <script type="text/javascript">
+        var dom = document.getElementById("container");
+        var myChart = echarts.init(dom);
+        
+        // Get backend URL from current host
+        // If accessed via /webpages/graph.html, use same host with port 8000
+        var host = window.location.host;
+        var backendUrl = window.location.protocol + "//" + host.split(':')[0] + ':8000';
+        
+        // Call the FastAPI /api/graph endpoint
+        $.get(backendUrl + '/api/graph', function (graph) {
+            myChart.hideLoading();
+            
+            var option = {
+                title: {
+                    text: 'Document Knowledge Network',
+                    subtext: 'Solid Line: Keyword Match | Dashed Line: Semantic Similarity',
+                    top: 'bottom',
+                    left: 'right'
+                },
+                tooltip: {},
+                legend: [{
+                    // Authors as legend
+                    data: graph.categories.map(function (a) { return a.name; })
+                }],
+                series: [
+                    {
+                        type: 'graph',
+                        layout: 'force', // Force-directed layout, automatically disperses nodes
+                        data: graph.nodes,
+                        links: graph.links,
+                        categories: graph.categories,
+                        roam: true, // Allow zoom and pan
+                        label: {
+                            show: true,
+                            position: 'right',
+                            formatter: '{b}'
+                        },
+                        labelLayout: {
+                            hideOverlap: true
+                        },
+                        scaleLimit: {
+                            min: 0.4,
+                            max: 2
+                        },
+                        lineStyle: {
+                            color: 'source',
+                            curveness: 0.3
+                        },
+                        force: {
+                            repulsion: 500, // Repulsion force between nodes
+                            edgeLength: [50, 200] // Edge length range
+                        }
+                    }
+                ]
+            };
+            myChart.setOption(option);
+        }).fail(function(xhr, status, error) {
+            console.error('Error loading graph data:', error);
+            dom.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; font-family: Arial; color: #666;"><p>Error loading graph data. Please ensure the backend is running and documents are processed.</p></div>';
+        });
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 # Import router directly to avoid circular imports
 from backend.api.routes import router as api_router
 from backend.services.embedding_service import EmbeddingService
@@ -13,6 +14,7 @@ from backend.services.document_processor import DocumentProcessor
 from backend.config import settings
 from pathlib import Path
 import asyncio
+import os
 
 
 @asynccontextmanager
@@ -124,6 +126,10 @@ app.add_middleware(
 # Include API router
 app.include_router(api_router, prefix="/api")
 
+# Mount static files for webpages
+webpages_path = Path(__file__).parent.parent / "webpages"
+if webpages_path.exists():
+    app.mount("/webpages", StaticFiles(directory=str(webpages_path)), name="webpages")
 
 # Health check endpoint
 @app.get("/health")

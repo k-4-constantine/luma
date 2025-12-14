@@ -4,6 +4,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from backend.models.schemas import ChatRequest, ChatResponse, StatusResponse
 from backend.services.vector_store import VectorStore
+from backend.services.knowledge_graph_service import KnowledgeGraphService
 from typing import List
 
 
@@ -78,3 +79,16 @@ async def list_documents(request: Request):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing documents: {e}")
+
+
+@router.get("/graph")
+async def get_knowledge_graph(request: Request):
+    """Get knowledge graph data for document network visualization."""
+    vector_store = request.app.state.vector_store
+    
+    try:
+        graph_service = KnowledgeGraphService(vector_store)
+        graph_data = await graph_service.generate_graph()
+        return graph_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating knowledge graph: {str(e)}")

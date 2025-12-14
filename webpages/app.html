@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Luma Research Assistant</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Luma RAG Research Assistant" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #header {
+            background-color: #001158;
+            color: white;
+            padding: 1em 2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #header h1 {
+            margin: 0;
+            color: white;
+            font-size: 1.5em;
+        }
+        
+        #header-nav {
+            display: flex;
+            gap: 1em;
+        }
+        
+        #header-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5em 1em;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        #header-nav a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        #main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        #chat-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid #C9BEC0;
+        }
+        
+        #documents-panel {
+            flex: 1;
+            background-color: #f5f5f5;
+            overflow-y: auto;
+            padding: 1em;
+        }
+        
+        #input-panel {
+            display: flex;
+            justify-content: flex-start;
+            padding: 1.2em;
+            background-color: white;
+            border-top: 2px solid #C9BEC0;
+            height: auto;
+            position: relative;
+        }
+        
+        #prompt-box {
+            height: 44px;
+            margin: 0 3px 0 10px;
+            flex: 1;
+            padding: 0 1em;
+            border-radius: 5px;
+            border: 2px solid #C9BEC0;
+            font-size: 1em;
+        }
+        
+        #prompt-btn {
+            height: 50px;
+            width: 50px;
+            background-color: #001158;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        
+        #prompt-btn:hover {
+            background-color: #002288;
+        }
+        
+        #prompt-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #output-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1em 2em;
+            background-color: #fafafa;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5em;
+        }
+        
+        .status-online {
+            background-color: #4CAF50;
+        }
+        
+        .status-offline {
+            background-color: #f44336;
+        }
+        
+        .document-item {
+            background-color: white;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-radius: 5px;
+            border: 1px solid #C9BEC0;
+            cursor: pointer;
+            transition: box-shadow 0.3s;
+        }
+        
+        .document-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .document-item h3 {
+            margin: 0 0 0.5em 0;
+            font-size: 1em;
+            color: #001158;
+        }
+        
+        .document-item p {
+            margin: 0.3em 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .document-meta {
+            display: flex;
+            gap: 1em;
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 0.5em;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2em;
+            color: #666;
+        }
+        
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 1em;
+            border-radius: 5px;
+            margin: 1em 0;
+        }
+        
+        .retrieved-doc {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 1em;
+            margin: 1em 0;
+            border-radius: 5px;
+        }
+        
+        .retrieved-doc h4 {
+            margin: 0 0 0.5em 0;
+            color: #001158;
+        }
+        
+        .retrieved-doc .doc-content {
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 0.5em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5em;
+            margin-top: 0.5em;
+        }
+        
+        .keyword-tag {
+            background-color: #001158;
+            color: white;
+            padding: 0.2em 0.5em;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🔬 Luma Research Assistant</h1>
+        <div id="header-nav">
+            <a href="graph.html" target="_blank">📊 Knowledge Graph</a>
+            <span id="status-indicator">
+                <span class="status-indicator status-offline" id="status-dot"></span>
+                <span id="status-text">Checking...</span>
+            </span>
+        </div>
+    </div>
+    
+    <div id="main-container">
+        <div id="chat-panel">
+            <div id="output-panel" id="chat-messages">
+                <div class="loading" id="initial-loading">Loading chat interface...</div>
+            </div>
+            <div id="input-panel">
+                <input type="text" id="prompt-box" placeholder="Ask a question about your research documents..." />
+                <button id="prompt-btn" onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+        
+        <div id="documents-panel">
+            <h2 style="margin-top: 0;">Retrieved Documents</h2>
+            <div id="documents-list">
+                <div class="loading">No documents retrieved yet. Ask a question to see relevant documents.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.protocol + '//' + window.location.host.split(':')[0] + ':8000';
+        const API_URL = API_BASE + '/api';
+        
+        // State
+        let conversationHistory = [];
+        let currentDocuments = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+            document.getElementById('prompt-box').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            document.getElementById('initial-loading').style.display = 'none';
+        });
+        
+        // Check backend status
+        async function checkStatus() {
+            try {
+                const response = await fetch(API_URL + '/status');
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+                
+                if (data.status === 'healthy' && data.weaviate_connected) {
+                    statusDot.className = 'status-indicator status-online';
+                    statusText.textContent = `${data.processed_documents} docs, ${data.total_chunks} chunks`;
+                } else {
+                    statusDot.className = 'status-indicator status-offline';
+                    statusText.textContent = 'Offline';
+                }
+            } catch (error) {
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+                statusDot.className = 'status-indicator status-offline';
+                statusText.textContent = 'Error';
+            }
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const promptBox = document.getElementById('prompt-box');
+            const message = promptBox.value.trim();
+            
+            if (!message) return;
+            
+            // Disable input
+            promptBox.disabled = true;
+            document.getElementById('prompt-btn').disabled = true;
+            
+            // Clear prompt
+            promptBox.value = '';
+            
+            // Add user message to chat
+            addMessageToChat('user', message);
+            
+            // Show loading
+            const loadingId = addMessageToChat('bot', 'Thinking...');
+            
+            try {
+                const response = await fetch(API_URL + '/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        conversation_history: conversationHistory
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                removeMessage(loadingId);
+                
+                // Add bot response
+                addMessageToChat('bot', data.message, data.retrieved_documents);
+                
+                // Update conversation history
+                conversationHistory.push(
+                    { role: 'user', content: message },
+                    { role: 'assistant', content: data.message }
+                );
+                
+                // Update documents panel
+                updateDocumentsPanel(data.retrieved_documents);
+                
+            } catch (error) {
+                removeMessage(loadingId);
+                addMessageToChat('bot', '❌ Error: ' + error.message, []);
+            } finally {
+                // Re-enable input
+                promptBox.disabled = false;
+                document.getElementById('prompt-btn').disabled = false;
+                promptBox.focus();
+            }
+        }
+        
+        // Add message to chat
+        function addMessageToChat(role, content, retrievedDocs = []) {
+            const outputPanel = document.getElementById('output-panel');
+            const messageId = 'msg-' + Date.now();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.id = messageId;
+            messageDiv.className = role === 'user' ? 'chat-human' : 'chat-reply';
+            
+            const bubble = document.createElement('div');
+            bubble.className = role === 'user' ? 'chat-bubble-self' : 'chat-bubble-bot';
+            bubble.textContent = content;
+            
+            messageDiv.appendChild(bubble);
+            
+            // Add retrieved documents if any
+            if (retrievedDocs && retrievedDocs.length > 0) {
+                retrievedDocs.forEach(doc => {
+                    const docDiv = document.createElement('div');
+                    docDiv.className = 'retrieved-doc';
+                    
+                    const title = document.createElement('h4');
+                    title.textContent = doc.title || 'Untitled Document';
+                    docDiv.appendChild(title);
+                    
+                    if (doc.author) {
+                        const author = document.createElement('p');
+                        author.textContent = 'Author: ' + doc.author;
+                        author.style.margin = '0.3em 0';
+                        docDiv.appendChild(author);
+                    }
+                    
+                    if (doc.summary) {
+                        const summary = document.createElement('p');
+                        summary.textContent = doc.summary;
+                        summary.style.margin = '0.5em 0';
+                        summary.style.fontSize = '0.9em';
+                        summary.style.color = '#666';
+                        docDiv.appendChild(summary);
+                    }
+                    
+                    if (doc.keywords && doc.keywords.length > 0) {
+                        const keywordsDiv = document.createElement('div');
+                        keywordsDiv.className = 'keywords';
+                        doc.keywords.forEach(keyword => {
+                            const tag = document.createElement('span');
+                            tag.className = 'keyword-tag';
+                            tag.textContent = keyword;
+                            keywordsDiv.appendChild(tag);
+                        });
+                        docDiv.appendChild(keywordsDiv);
+                    }
+                    
+                    if (doc.content) {
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'doc-content';
+                        contentDiv.textContent = doc.content.substring(0, 500) + (doc.content.length > 500 ? '...' : '');
+                        docDiv.appendChild(contentDiv);
+                    }
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'document-meta';
+                    meta.innerHTML = `
+                        <span>${doc.file_type}</span>
+                        <span>Score: ${(doc.relevance_score * 100).toFixed(1)}%</span>
+                    `;
+                    docDiv.appendChild(meta);
+                    
+                    messageDiv.appendChild(docDiv);
+                });
+            }
+            
+            outputPanel.appendChild(messageDiv);
+            outputPanel.scrollTop = outputPanel.scrollHeight;
+            
+            return messageId;
+        }
+        
+        // Remove message
+        function removeMessage(messageId) {
+            const message = document.getElementById(messageId);
+            if (message) {
+                message.remove();
+            }
+        }
+        
+        // Update documents panel
+        function updateDocumentsPanel(documents) {
+            const documentsList = document.getElementById('documents-list');
+            documentsList.innerHTML = '';
+            
+            if (!documents || documents.length === 0) {
+                documentsList.innerHTML = '<div class="loading">No documents retrieved.</div>';
+                return;
+            }
+            
+            currentDocuments = documents;
+            
+            documents.forEach((doc, index) => {
+                const docItem = document.createElement('div');
+                docItem.className = 'document-item';
+                docItem.onclick = () => scrollToDocument(index);
+                
+                docItem.innerHTML = `
+                    <h3>${doc.title || 'Untitled Document'}</h3>
+                    ${doc.summary ? `<p>${doc.summary.substring(0, 150)}${doc.summary.length > 150 ? '...' : ''}</p>` : ''}
+                    <div class="document-meta">
+                        <span>${doc.file_type}</span>
+                        <span>${(doc.relevance_score * 100).toFixed(1)}% relevant</span>
+                    </div>
+                `;
+                
+                documentsList.appendChild(docItem);
+            });
+        }
+        
+        // Scroll to document in chat
+        function scrollToDocument(index) {
+            // This would scroll to the document in the chat, but for now just highlight it
+            const documents = document.querySelectorAll('.retrieved-doc');
+            if (documents[index]) {
+                documents[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                documents[index].style.borderLeft = '4px solid #FF9800';
+                setTimeout(() => {
+                    documents[index].style.borderLeft = '4px solid #2196F3';
+                }, 2000);
+            }
+        }
+        
+        // Check status periodically
+        setInterval(checkStatus, 30000); // Every 30 seconds
+    </script>
+</body>
+</html>
