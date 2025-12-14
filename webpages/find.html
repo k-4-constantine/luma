@@ -15,6 +15,7 @@
     <!-- <header>
     <h1>Title</h1>
     </header> -->
+    <!-- INPUT PANEL -->
     <section id="input-panel">
       <img src ="img/Tacit-logo-1colour.svg" alt="Tacit Insights logo" id="page-logo"/>
       <form action="">
@@ -23,10 +24,13 @@
         <input type="submit" id="prompt-btn"value="Go">
       </form>
     </section>
+    <!-- OUTPUT PANEL -->
     <section id="output-panel">
+      <!-- Chat bubble: human prompt -->
       <div class="chat-human">
         <p class="chat-bubble-self">This is a prompt by the human</p>
       </div>
+      <!-- Chat bubble: bot reply -->
       <div class="chat-reply">
         <p class="chat-bubble-bot">This is a reply from the bot</p>
         <div class="feedback">
@@ -34,7 +38,7 @@
           <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
         </div>
       </div>
-
+      <!-- Document retrieved -->
       <article class="search-result">
       <h2>Heading 2</h2>
       <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
@@ -55,39 +59,11 @@
         <a href="#"><img src="img/open_in_new_24dp_524F47_FILL0_wght400_GRAD0_opsz24.svg" alt="open in a new window" class="open-in-new-icon"/></a>
         </div>
       </article>
-
-      <article class="search-result">
-      <h2>Heading 2</h2>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <h3>Heading 3</h3>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <!-- <details>
-        <summary>More</summary>
-        <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      </details> -->
-      <p><cite class="article-title">Title</cite>, <span class="article-author">Author</span></p>
-      <small class="article-date">13 December2025</small>
-      <small class="article-email"><a href="mailto:author@article.com">author@article.com</a></small>
-      <div class="feedback-article">
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-        <a href="#"><img src="img/open_in_new_24dp_524F47_FILL0_wght400_GRAD0_opsz24.svg" alt="open in a new window" class="open-in-new-icon"/></a>
-        </div>
-      </article>
-
-      <div class="chat-human">
-        <p class="chat-bubble-self">This is a prompt by the human</p>
-      </div>
-      <div class="chat-reply">
-        <p class="chat-bubble-bot">This is a reply from the bot</p>
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-      </div>
-
+      <!-- Graph -->
+       <section class="graph-panel">
+      <h2>Retrieved document connections</h2>
+      <iframe src="https://www.example.com" title="Document connections" class="graph"></iframe>
+      </section>
     </section>
   </body>
 </html>
