@@ -25,14 +25,14 @@ A production-ready RAG (Retrieval-Augmented Generation) application designed for
   - Conversation history support
   - Markdown rendering for formatted responses
 
- <img width="2193" height="926" alt="2" src="https://github.com/user-attachments/assets/74e2ed72-b8da-4c77-9d12-e248f873a1cb" />
-
 
 - **📊 Knowledge Graph Visualization**
   - Interactive document network visualization
   - Document relationships based on keyword matching
   - Force-directed graph layout
   - Real-time graph generation
+ 
+    <img width="2193" height="926" alt="2" src="https://github.com/user-attachments/assets/74e2ed72-b8da-4c77-9d12-e248f873a1cb" />
 
 - **🌐 Web-Based UI**
   - Modern, responsive web interface
