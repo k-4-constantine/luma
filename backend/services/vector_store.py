@@ -147,8 +147,15 @@ class VectorStore:
         retrieved_docs = []
         for item in response.objects:
             props = item.properties
+            # Handle chunk_id - it might be a UUID object or string
+            chunk_id_value = props["chunk_id"]
+            if isinstance(chunk_id_value, str):
+                chunk_id = UUID(chunk_id_value)
+            else:
+                chunk_id = chunk_id_value
+            
             retrieved_docs.append(RetrievedDocument(
-                chunk_id=UUID(props["chunk_id"]),
+                chunk_id=chunk_id,
                 title=props["title"],
                 summary=props["summary"],
                 keywords=props["keywords"],

@@ -27,6 +27,10 @@ class EmbeddingService:
         embeddings = await self.embed_texts([text])
         return embeddings[0]
 
+    async def embed_query(self, query: str) -> List[float]:
+        """Generate embedding for a query text (alias for embed_text)."""
+        return await self.embed_text(query)
+
     async def close(self):
         """Close the OpenAI client connection."""
         if self.client:
