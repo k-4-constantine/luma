@@ -2,6 +2,8 @@
 
 A production-ready RAG (Retrieval-Augmented Generation) application designed for hospital researchers. This application enables intelligent document search and question-answering using AI-powered semantic search and natural language processing.
 
+![1](https://github.com/user-attachments/assets/1c6c3a71-d354-4bdf-a4ce-f3bd19a84ae0)
+
 ## 🚀 Features
 
 ### Core Capabilities
@@ -22,6 +24,9 @@ A production-ready RAG (Retrieval-Augmented Generation) application designed for
   - Context-aware responses using retrieved documents
   - Conversation history support
   - Markdown rendering for formatted responses
+
+ <img width="2193" height="926" alt="2" src="https://github.com/user-attachments/assets/74e2ed72-b8da-4c77-9d12-e248f873a1cb" />
+
 
 - **📊 Knowledge Graph Visualization**
   - Interactive document network visualization
