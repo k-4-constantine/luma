@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.6
+    container_name: luma-weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    networks:
+      - luma-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: luma-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    volumes:
+      - ./Example-Files:/app/Example-Files
+    depends_on:
+      weaviate:
+        condition: service_healthy
+    networks:
+      - luma-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: luma-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - luma-network
+
+volumes:
+  weaviate_data:
+
+networks:
+  luma-network:
+    driver: bridge
