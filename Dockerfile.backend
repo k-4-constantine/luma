@@ -3,9 +3,10 @@ FROM python:3.13-slim
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
-
+COPY README.md .
 COPY backend/ ./backend/
+
+RUN pip install --no-cache-dir -e .
 COPY scripts/ ./scripts/
 COPY webpages/ ./webpages/
 

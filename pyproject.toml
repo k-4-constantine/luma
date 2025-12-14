@@ -25,4 +25,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["backend", "frontend"]
+where = ["backend"]
