@@ -9,6 +9,7 @@ class FileType(str, Enum):
     PDF = "pdf"
     DOCX = "docx"
     PPTX = "pptx"
+    TXT = "txt"
 
 class ChunkingStrategy(str, Enum):
     WHOLE_FILE = "whole_file"
