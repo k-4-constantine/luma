@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+    <div id="container" style="height: 100%"></div>
+    <script type="text/javascript">
+        var dom = document.getElementById("container");
+        var myChart = echarts.init(dom);
+        
+        // 调用你的 FastAPI 接口
+        $.get('http://127.0.0.1:8000/graph', function (graph) {
+            myChart.hideLoading();
+            
+            var option = {
+                title: {
+                    text: 'Document Knowledge Network',
+                    subtext: 'Solid Line: Keyword Match | Dashed Line: Semantic Similarity',
+                    top: 'bottom',
+                    left: 'right'
+                },
+                tooltip: {},
+                legend: [{
+                    // 作者作为图例
+                    data: graph.categories.map(function (a) { return a.name; })
+                }],
+                series: [
+                    {
+                        type: 'graph',
+                        layout: 'force', // 力引导布局，自动分散节点
+                        data: graph.nodes,
+                        links: graph.links,
+                        categories: graph.categories,
+                        roam: true, // 允许缩放和平移
+                        label: {
+                            show: true,
+                            position: 'right',
+                            formatter: '{b}'
+                        },
+                        labelLayout: {
+                            hideOverlap: true
+                        },
+                        scaleLimit: {
+                            min: 0.4,
+                            max: 2
+                        },
+                        lineStyle: {
+                            color: 'source',
+                            curveness: 0.3
+                        },
+                        force: {
+                            repulsion: 500, // 节点之间的排斥力
+                            edgeLength: [50, 200] // 边的长度范围
+                        }
+                    }
+                ]
+            };
+            myChart.setOption(option);
+        });
+    </script>
+</body>
+</html>

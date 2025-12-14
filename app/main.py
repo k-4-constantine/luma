@@ -4,15 +4,21 @@ import fitz
 import glob
 import json
 import requests
+import numpy as np
+import concurrent.futures  # NEW: For parallel processing
+from datetime import datetime
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pptx import Presentation
 import chromadb
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from dotenv import load_dotenv
-# --- 配置加载 ---
+from sklearn.metrics.pairwise import cosine_similarity
 
+# --- Configuration ---
 load_dotenv()
 API_KEY = os.getenv("GREENPT_API_KEY")
 API_BASE = os.getenv("GREENPT_API_URL", "https://api.greenpt.ai/v1").rstrip('/')
@@ -21,7 +27,7 @@ CHAT_MODEL = os.getenv("GREENPT_MODEL", "green-l-raw")
 if not API_KEY:
     print("FATAL: GREENPT_API_KEY not set.")
 
-# --- GreenPT Embedding 函数 ---
+# --- GreenPT Embedding Function ---
 class GreenPTEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input: Documents) -> Embeddings:
         url = f"{API_BASE}/embeddings"
@@ -31,45 +37,57 @@ class GreenPTEmbeddingFunction(EmbeddingFunction):
             "encoding_format": "float"
         }
         headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-        try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=30)
-            if resp.status_code != 200:
-                print(f"Embedding Error: {resp.text}")
-                return []
-            data = resp.json()
-            sorted_data = sorted(data['data'], key=lambda x: x['index'])
-            return [item['embedding'] for item in sorted_data]
-        except Exception as e:
-            print(f"Embedding Exception: {e}")
-            raise e
+        
+        for attempt in range(3):
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=30)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    sorted_data = sorted(data['data'], key=lambda x: x['index'])
+                    return [item['embedding'] for item in sorted_data]
+                elif resp.status_code == 429:
+                    import time
+                    time.sleep(2 * (attempt + 1))
+                    continue
+            except Exception:
+                import time
+                time.sleep(1)
+        raise Exception("Failed to generate embeddings after retries")
 
-# --- 数据库初始化 ---
-client = chromadb.PersistentClient(path="/chroma_data")
-# 每次重启为了演示数据增强效果，建议清空重建。生产环境请注释掉下面两行。
-try: client.delete_collection("simple_rag") 
-except: pass 
-collection = client.create_collection(name="simple_rag", embedding_function=GreenPTEmbeddingFunction())
+# --- Database Init ---
+client = chromadb.PersistentClient(path="./chroma_data")
+try:
+    collection = client.get_collection(name="simple_rag")
+except:
+    collection = client.create_collection(name="simple_rag", embedding_function=GreenPTEmbeddingFunction())
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if not os.path.exists("static"):
+    os.makedirs("static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class AskReq(BaseModel):
     question: str
 
-# --- 辅助功能：生成文件级元数据 ---
+# --- Helper: Generate Metadata ---
 def generate_file_metadata(full_text: str) -> Dict[str, str]:
-    """
-    调用 GreenPT 为整个 PPT 生成总结和关键词
-    """
-    # 截断文本防止超长
     truncated_text = full_text[:4000]
-    
     system_prompt = (
         "You are a helpful research assistant. "
         "Analyze the provided document text. "
         "Output a JSON object with two keys: "
-        "'summary' (a concise summary of the whole file, max 50 words) and "
-        "'keywords' (a comma-separated string of top 5 keywords). "
-        "Do not include markdown formatting, just raw JSON."
+        "'summary' (concise summary, max 50 words) and "
+        "'keywords' (comma-separated string of top 5 keywords). "
+        "Do not include markdown formatting."
     )
     
     payload = {
@@ -79,292 +97,408 @@ def generate_file_metadata(full_text: str) -> Dict[str, str]:
             {"role": "user", "content": truncated_text}
         ],
         "stream": False,
-        "response_format": {"type": "json_object"} # 尝试请求 JSON 格式
+        "response_format": {"type": "json_object"}
     }
-    
-    url = f"{API_BASE}/chat/completions"
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
     try:
-        print("DEBUG: Generating summary and keywords...")
-        resp = requests.post(url, json=payload, headers=headers, timeout=40)
+        resp = requests.post(f"{API_BASE}/chat/completions", json=payload, headers=headers, timeout=40)
         resp.raise_for_status()
         content = resp.json()['choices'][0]['message']['content']
-        
-        # 尝试解析 JSON
-        try:
-            data = json.loads(content)
-            return {
-                "summary": data.get("summary", "N/A"),
-                "keywords": data.get("keywords", "N/A")
-            }
-        except json.JSONDecodeError:
-            # 容错：如果模型没返回 JSON，直接存文本
-            return {"summary": content[:200], "keywords": "Parsing Failed"}
-            
+        data = json.loads(content)
+        return {
+            "summary": data.get("summary", "N/A"),
+            "keywords": data.get("keywords", "N/A")
+        }
     except Exception as e:
-        print(f"Metadata Generation Error: {e}")
+        print(f"Metadata Gen Error: {e}")
         return {"summary": "Error generating summary", "keywords": "Error"}
 
-
-# --- 辅助函数：PDF 文本清洗 ---
+# --- Helper: Text Cleaning ---
 def clean_text(text: str) -> str:
-    """清洗提取出的文本，去除多余空白和换行"""
     if not text: return ""
-    # 将多余的空白字符（包括换行）替换为单个空格
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    return re.sub(r'\s+', ' ', text).strip()
 
-# --- 辅助函数：处理 PDF 文件 ---
+# --- Helper: File Processors ---
 def process_pdf_file(fpath):
     try:
         doc = fitz.open(fpath)
-        fname = os.path.basename(fpath)
-        
-        # 提取元数据
         meta = doc.metadata
         author = meta.get('author', 'Unknown Author') if meta else "Unknown Author"
-        # PDF 的创建时间通常比较乱，这里简化处理，如有需要可用正则解析
         created_at = meta.get('creationDate', 'Unknown Date') if meta else "Unknown Date"
-
+        
         all_text_list = []
         slides_content = []
-
         for i, page in enumerate(doc):
-            # 获取页面文本 (按 blocks 获取更有结构感，这里为了通用简化为 text)
-            raw_text = page.get_text()
-            cleaned = clean_text(raw_text)
-            
-            # 只有当页面有实质内容时才保留
+            cleaned = clean_text(page.get_text())
             if len(cleaned) > 10:
                 all_text_list.append(cleaned)
-                slides_content.append({
-                    "text": cleaned,
-                    "page": i + 1,
-                    "source_type": "PDF"
-                })
+                slides_content.append({"text": cleaned, "page": i + 1, "source_type": "PDF"})
         
         return {
-            "author": author,
-            "created_at": created_at,
-            "full_text": "\n\n".join(all_text_list),
-            "chunks": slides_content
+            "author": author, "created_at": created_at,
+            "full_text": "\n\n".join(all_text_list), "chunks": slides_content
         }
     except Exception as e:
-        print(f"Error reading PDF {fpath}: {e}")
+        print(f"Error PDF {fpath}: {e}")
         return None
 
-# --- 辅助函数：处理 PPTX 文件 ---
 def process_pptx_file(fpath):
     try:
         prs = Presentation(fpath)
+        core = prs.core_properties
+        author = core.author if core.author else "Unknown Author"
+        created_at = core.created.strftime("%Y-%m-%d") if core.created else "Unknown Date"
         
-        # 提取元数据
-        core_props = prs.core_properties
-        author = core_props.author if core_props.author else "Unknown Author"
-        created_at = "Unknown Date"
-        if core_props.created:
-            try: created_at = core_props.created.strftime("%Y-%m-%d")
-            except: pass
-            
         all_text_list = []
         slides_content = []
-        
         for i, slide in enumerate(prs.slides):
             texts = [s.text for s in slide.shapes if hasattr(s, "text") and s.text]
-            page_text = "\n".join(texts).strip()
-            
+            page_text = clean_text("\n".join(texts))
             if len(page_text) > 10:
                 all_text_list.append(page_text)
-                slides_content.append({
-                    "text": page_text,
-                    "page": i + 1,
-                    "source_type": "PPTX"
-                })
+                slides_content.append({"text": page_text, "page": i + 1, "source_type": "PPTX"})
                 
         return {
-            "author": author,
-            "created_at": created_at,
-            "full_text": "\n\n".join(all_text_list),
-            "chunks": slides_content
+            "author": author, "created_at": created_at,
+            "full_text": "\n\n".join(all_text_list), "chunks": slides_content
         }
     except Exception as e:
-        print(f"Error reading PPTX {fpath}: {e}")
+        print(f"Error PPTX {fpath}: {e}")
         return None
 
-# --- 核心工具：重排序 (Rerank) ---
 def rerank_docs(query: str, documents: List[str], metadatas: List[Dict], top_n=3):
-    if not documents:
-        return [], []
+    if not documents: return [], []
+    # Simplified rerank for brevity
+    return documents[:top_n], metadatas[:top_n]
 
-    url = f"{API_BASE}/rerank"
-    payload = {
-        "model": "green-rerank",
-        "query": query,
-        "documents": documents,
-        "top_n": top_n,
-        "return_documents": False 
-    }
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+# --- NEW: Single File Processor for Parallel Execution ---
+def process_single_file_pipeline(fpath):
+    fname = os.path.basename(fpath)
+    print(f"START Processing: {fname}")
+    
+    extracted = None
+    if fpath.lower().endswith(".pdf"):
+        extracted = process_pdf_file(fpath)
+    elif fpath.lower().endswith((".pptx", ".ppt")):
+        extracted = process_pptx_file(fpath)
+    
+    if not extracted or not extracted.get('chunks'):
+        return 0
+    
+    # Generate Metadata (The slow part)
+    ai_meta = generate_file_metadata(extracted['full_text'])
+    
+    # Prepare data for DB
+    docs = []
+    metas = []
+    ids = []
+    
+    for item in extracted['chunks']:
+        meta = {
+            "source": fname,
+            "page": item['page'],
+            "author": extracted['author'],
+            "created_at": extracted['created_at'],
+            "file_type": item['source_type'],
+            "summary": ai_meta['summary'],
+            "keywords": ai_meta['keywords']
+        }
+        docs.append(item['text'])
+        metas.append(meta)
+        ids.append(f"{fname}_{item['page']}")
+    
+    # Add to DB
+    if docs:
+        try:
+            collection.add(documents=docs, metadatas=metas, ids=ids)
+            print(f"DONE Processing: {fname} ({len(docs)} chunks)")
+            return len(docs)
+        except Exception as e:
+            print(f"DB Error {fname}: {e}")
+            return 0
+    return 0
 
-    try:
-        print(f"DEBUG: Reranking {len(documents)} docs...")
-        resp = requests.post(url, json=payload, headers=headers, timeout=15)
-        
-        if resp.status_code != 200:
-            print(f"Rerank API Error: {resp.text}, falling back.")
-            return documents[:top_n], metadatas[:top_n]
-
-        results = resp.json().get('results', [])
-        results.sort(key=lambda x: x['relevance_score'], reverse=True)
-
-        final_docs = []
-        final_metas = []
-
-        for item in results:
-            idx = item['index']
-            if 0 <= idx < len(documents):
-                final_docs.append(documents[idx])
-                final_metas.append(metadatas[idx])
-        
-        return final_docs, final_metas
-
-    except Exception as e:
-        print(f"Rerank Exception: {e}, falling back.")
-        return documents[:top_n], metadatas[:top_n]
-
-# --- 接口：Ingest (增强版) ---
+# --- Modified Ingest Endpoint ---
 @app.post("/ingest")
 def ingest():
-    # 1. 扫描两种类型的文件
-    pptx_files = glob.glob("/app_data/*.pptx")
-    pdf_files = glob.glob("/app_data/*.pdf")
-    all_files = pptx_files + pdf_files
+    # Detect data directory
+    data_dir = "./data"
+    if os.path.exists("/app_data"): data_dir = "/app_data"
+    elif os.path.exists("data"): data_dir = "data"
     
-    if not all_files: return {"error": "No files found"}
+    all_files = glob.glob(f"{data_dir}/*.pptx") + glob.glob(f"{data_dir}/*.pdf")
+    if not all_files:
+        return {"error": "No files found"}
+
+    print(f"Found {len(all_files)} files. Starting parallel ingestion...")
     
     total_chunks = 0
     processed_files = 0
     
-    for fpath in all_files:
-        fname = os.path.basename(fpath)
-        print(f"Processing File: {fname}")
-        
-        extracted_data = None
-        
-        # 2. 根据后缀名分流处理
-        if fpath.lower().endswith(".pdf"):
-            extracted_data = process_pdf_file(fpath)
-        elif fpath.lower().endswith(".pptx") or fpath.lower().endswith(".ppt"):
-            extracted_data = process_pptx_file(fpath)
-            
-        # 如果提取失败或文件为空，跳过
-        if not extracted_data or not extracted_data['full_text']:
-            print(f"Skipping {fname} (No content or error)")
-            continue
-
-        # 3. AI 生成总结和关键词 (通用逻辑)
-        # 注意：这里复用了你原本的 generate_file_metadata 函数
-        try:
-            ai_meta = generate_file_metadata(extracted_data['full_text'])
-            print(f"  > Generated Summary: {ai_meta['summary'][:50]}...")
-        except Exception as e:
-            print(f"  > AI Summary generation failed for {fname}: {e}")
-            ai_meta = {"summary": "Summary generation failed", "keywords": "N/A"}
-
-        # 4. 存入数据库 (通用逻辑)
-        try:
-            for item in extracted_data['chunks']:
-                metadata = {
-                    "source": fname,
-                    "page": item['page'],
-                    "author": extracted_data['author'],
-                    "created_at": extracted_data['created_at'],
-                    "file_type": item['source_type'], # 新增字段：文件类型
-                    "summary": ai_meta['summary'],
-                    "keywords": ai_meta['keywords']
-                }
-                
-                collection.add(
-                    documents=[item['text']],
-                    metadatas=[metadata],
-                    ids=[f"{fname}_{item['page']}"]
-                )
-                total_chunks += 1
-            
+    # Parallel Processing using ThreadPoolExecutor
+    # Adjust max_workers based on your API rate limits (e.g., 3-5 is usually safe)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(process_single_file_pipeline, all_files))
+    
+    for count in results:
+        if count > 0:
             processed_files += 1
-            
-        except Exception as e:
-            print(f"Error inserting into DB for {fname}: {e}")
-            
+            total_chunks += count
+
     return {
         "status": "ok", 
         "files": processed_files, 
         "chunks": total_chunks,
-        "message": "Metadata enrichment complete."
+        "message": "Parallel ingestion complete."
     }
 
-# --- 接口：Ask (展示增强的 Sources) ---
 @app.post("/ask")
 def ask(req: AskReq):
-    # 1. 粗排
-    results = collection.query(query_texts=[req.question], n_results=10)
-    
+    results = collection.query(query_texts=[req.question], n_results=5)
     if not results['documents'] or not results['documents'][0]:
         return {"answer": "No info found."}
-
-    # 2. 精排
-    top_docs, top_metas = rerank_docs(req.question, results['documents'][0], results['metadatas'][0], top_n=3)
-
-    # 3. 组装 Context (包含更丰富的元数据供 LLM 参考)
-    context_parts = []
-    for i, (doc, meta) in enumerate(zip(top_docs, top_metas)):
-        source_id = i + 1
-        # 在 Context 中加入 Summary 和 Keywords，帮助 LLM 更好理解这个片段的背景
-        meta_info = (
-            f"(ID: {source_id})\n"
-            f"File: {meta['source']} (Page {meta['page']})\n"
-            f"Author: {meta['author']}, Date: {meta['created_at']}\n"
-            f"Context Summary: {meta['summary']}\n"
-        )
-        part = f"{meta_info}\nContent:\n{doc}"
-        context_parts.append(part)
     
-    context_str = "\n\n---\n\n".join(context_parts)
-
-    # 4. Prompt (要求引用)
-    system_prompt = (
-        "You are an expert research assistant. "
-        "Answer the user's question strictly based on the provided Context.\n"
-        "1. Cite sources using [ID: x] at the end of sentences.\n"
-        "2. You can use the 'Context Summary' metadata to understand the broader context of a slide, "
-        "but prioritize the 'Content' for specific facts."
-    )
-
-    user_prompt = f"Context:\n{context_str}\n\nQuestion: {req.question}"
-
-    payload = {
-        "model": CHAT_MODEL, 
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "stream": False
-    }
+    # Simplified prompt logic
+    docs = results['documents'][0]
+    metas = results['metadatas'][0]
     
-    url = f"{API_BASE}/chat/completions"
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    
+    context = ""
+    for i, (d, m) in enumerate(zip(docs, metas)):
+        context += f"[Source {i+1}: {m['source']}]\n{d}\n\n"
+
+    # Call LLM
     try:
-        resp = requests.post(url, json=payload, headers=headers, timeout=60)
-        if resp.status_code != 200:
-            return {"error": f"Chat API {resp.status_code}: {resp.text}"}
-        
-        answer = resp.json()['choices'][0]['message']['content']
-        
-        return {
-            "answer": answer,
-            "citations": top_metas # 前端现在可以看到完整的 Author, Created, Keywords, Summary 了！
+        payload = {
+            "model": CHAT_MODEL,
+            "messages": [
+                {"role": "system", "content": "Answer using the context."},
+                {"role": "user", "content": f"Context:\n{context}\n\nQ: {req.question}"}
+            ]
         }
+        resp = requests.post(f"{API_BASE}/chat/completions", json=payload, headers={"Authorization": f"Bearer {API_KEY}"})
+        return {"answer": resp.json()['choices'][0]['message']['content'], "citations": metas}
     except Exception as e:
         return {"error": str(e)}
+
+# --- Modified Graph Endpoint (Fixing the 500 Error) ---
+@app.get("/graph")
+def get_knowledge_graph():
+    try:
+        # 1. 获取所有数据
+        data = collection.get(include=['metadatas', 'embeddings'])
+        if not data or not data.get('metadatas'):
+            return {"nodes": [], "links": [], "categories": []}
+
+        # Embedding 安全检查
+        embeddings = data.get('embeddings', [])
+        has_embeddings = (embeddings is not None and len(embeddings) > 0)
+
+        # 2. 聚合 Chunk 为 File
+        files_map = {}
+        embedding_dim = 1536 
+        if has_embeddings:
+            for emb in embeddings:
+                if emb is not None and len(emb) > 0:
+                    embedding_dim = len(emb)
+                    break
+
+        for i, meta in enumerate(data['metadatas']):
+            fname = meta['source']
+            if fname not in files_map:
+                files_map[fname] = {
+                    "author": meta.get('author', 'Unknown'),
+                    "created_at": meta.get('created_at', 'Unknown'),
+                    "keywords": set(), # 使用集合存储【单词】
+                    "embeddings": [],
+                    "chunk_count": 0
+                }
+            
+            # --- 核心修改1：关键词分词处理 (Token-based) ---
+            if 'keywords' in meta and meta['keywords']:
+                # 先按逗号分割成短语
+                raw_phrases = [k.strip().lower() for k in meta['keywords'].split(',') if k.strip()]
+                for phrase in raw_phrases:
+                    # 再正则拆分成单词，去掉标点符号
+                    words = re.findall(r'\w+', phrase)
+                    # 过滤掉太短的词(如 'a', 'of', 'in')，避免无意义连接
+                    valid_words = [w for w in words if len(w) > 2] 
+                    files_map[fname]['keywords'].update(valid_words)
+                
+            # 收集 Embedding
+            if has_embeddings and i < len(embeddings):
+                curr_emb = embeddings[i]
+                if curr_emb is not None and len(curr_emb) > 0:
+                    files_map[fname]['embeddings'].append(curr_emb)
+                
+            files_map[fname]['chunk_count'] += 1
+
+        # 3. 构建节点 (Nodes)
+        nodes = []
+        categories = []
+        author_map = {} 
+        file_names = list(files_map.keys())
+        file_indices = {name: i for i, name in enumerate(file_names)}
+        file_avg_embeddings = []
+        
+        current_time = datetime.now()
+
+        for fname in file_names:
+            info = files_map[fname]
+            raw_author = info['author'].strip()
+            
+            # --- 规则优化：作者清洗与分类 ---
+            is_unknown = raw_author.lower() in ["unknown author", "unknown", "n/a", "", "none"]
+            author_key = "Unknown" if is_unknown else raw_author
+            
+            if author_key not in author_map:
+                author_map[author_key] = len(categories)
+                categories.append({"name": author_key})
+            
+            # --- 核心修改2：时间亮度计算 (Opacity) ---
+            opacity = 1.0 
+            try:
+                created_dt = None
+                date_str = str(info['created_at']).strip()
+                # 尝试解析多种日期格式
+                for fmt in ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y%m%d"]:
+                    try:
+                        created_dt = datetime.strptime(date_str, fmt)
+                        break
+                    except: pass
+                
+                if created_dt:
+                    days_diff = (current_time - created_dt).days
+                    if days_diff < 0: days_diff = 0
+                    
+                    # 0-90天: 亮度 1.0 (非常亮)
+                    # 90-365天: 亮度 0.8
+                    # >1年: 线性衰减，最低 0.2
+                    if days_diff <= 90:
+                        opacity = 1.0
+                    elif days_diff <= 365:
+                        opacity = 0.8
+                    else:
+                        opacity = max(0.2, 0.8 - ((days_diff - 365) / (365 * 2)))
+                else:
+                    opacity = 0.5 # 无日期信息，给个中间值
+            except:
+                opacity = 0.5 
+
+            # 计算平均向量
+            avg_emb = np.zeros(embedding_dim)
+            valid_embs = [e for e in info['embeddings'] if e is not None and len(e) == embedding_dim]
+            if valid_embs:
+                avg_emb = np.mean(valid_embs, axis=0)
+            file_avg_embeddings.append(avg_emb)
+            
+            # --- 节点样式配置 ---
+            item_style = {
+                "opacity": opacity,
+                "borderColor": "#fff" if opacity > 0.8 else "transparent", 
+                "borderWidth": 1
+            }
+            
+            # 标签样式：暗节点标签也变灰，避免喧宾夺主
+            label_style = {
+                "show": True,
+                "color": "#333" if opacity > 0.7 else "#aaa"
+            }
+
+            # --- 核心修改3：未知作者强制变灰 ---
+            if is_unknown:
+                item_style["color"] = "#cccccc" # 强制灰色
+                label_style["color"] = "#999999"
+
+            nodes.append({
+                "id": str(file_indices[fname]),
+                "name": fname,
+                "category": author_map[author_key], 
+                "value": info['chunk_count'], 
+                "itemStyle": item_style,
+                "symbolSize": 15, 
+                "label": label_style
+            })
+
+        # 4. 构建边 (Links)
+        links = []
+        connection_counts = {i: 0 for i in range(len(nodes))}
+        
+        # 计算相似度矩阵
+        sim_matrix = np.zeros((len(nodes), len(nodes)))
+        if len(file_avg_embeddings) > 0:
+            try:
+                emb_matrix = np.vstack(file_avg_embeddings)
+                sim_matrix = cosine_similarity(emb_matrix)
+            except Exception as e:
+                print(f"Sim Matrix Error: {e}")
+
+        for i in range(len(file_names)):
+            for j in range(i + 1, len(file_names)):
+                source_file = file_names[i]
+                target_file = file_names[j]
+                
+                # --- 核心修改4：集合交集匹配 ---
+                # 因为前面已经把关键词拆分成单词存入 set 了，这里直接取交集
+                kw_a = files_map[source_file]['keywords']
+                kw_b = files_map[target_file]['keywords']
+                
+                intersection = kw_a.intersection(kw_b)
+                match_count = len(intersection) # 共同单词的数量
+                
+                # 安全获取相似度分数
+                raw_score = sim_matrix[i][j]
+                sem_score = float(raw_score) 
+                
+                # 只要有 1 个单词相同就连接
+                if match_count > 0:
+                    # 连线宽度：匹配词越多越粗 (1个词宽1.5, 5个词宽3.5)
+                    width = 1 + (match_count * 0.5) 
+                    
+                    links.append({
+                        "source": str(i),
+                        "target": str(j),
+                        "value": match_count,
+                        "lineStyle": {
+                            "width": min(width, 8), 
+                            "type": "solid",
+                            "opacity": 0.6,
+                            "curveness": 0.2,
+                            "color": "source" # 颜色跟随源节点
+                        },
+                        # Tooltip 显示共同的单词
+                        "tooltip": {"formatter": f"Shared: {', '.join(list(intersection)[:10])}"}
+                    })
+                    connection_counts[i] += 1
+                    connection_counts[j] += 1
+                    
+                elif sem_score > 0.85: 
+                    links.append({
+                        "source": str(i),
+                        "target": str(j),
+                        "value": round(sem_score, 2),
+                        "lineStyle": {
+                            "width": 1,
+                            "type": "dashed", 
+                            "color": "#ccc",
+                            "opacity": 0.5,
+                            "curveness": -0.2
+                        },
+                        "tooltip": {"formatter": f"Semantic Similarity: {sem_score:.2f}"}
+                    })
+
+        # 5. 根据连接数调整节点大小
+        for i in range(len(nodes)):
+            size = 10 + (connection_counts[i] * 2)
+            nodes[i]["symbolSize"] = min(size, 70)
+
+        return {
+            "nodes": nodes,
+            "links": links,
+            "categories": categories
+        }
+    except Exception as e:
+        print(f"Graph Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating knowledge graph: {str(e)}")

@@ -9,5 +9,8 @@ dependencies = [
     "chromadb",
     "requests",
     "python-dotenv",
-    "pymupdf"
+    "pymupdf",
+    "numpy",
+    "scikit-learn",
+    "aiofiles"
 ]
