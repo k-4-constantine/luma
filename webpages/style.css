@@ -165,7 +165,8 @@ margin-right: 10px;
 }
 
 .graph-panel {
-  border: 2px solid #007679;
+  border: solid rgb(201,190,192, 0.5);
+
 }
 
 .feedback-article {
