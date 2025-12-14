@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
       .retrieved-doc {
         background-color: #e3f2fd;
@@ -112,7 +113,7 @@
     <section id="input-panel">
       <img src ="img/Tacit-logo-1colour.svg" alt="Tacit Insights logo" id="page-logo"/>
       <form id="chat-form" onsubmit="event.preventDefault(); sendMessage();">
-        <input type="text" id="prompt-box" placeholder="What are you looking for?">
+        <input type="text" id="prompt-box" placeholder="What are you looking for? Try dragging an audio here">
         <input type="submit" id="prompt-btn" value="Go">
       </form>
       <div id="status-area" style="display: flex; align-items: center; gap: 1em; margin-left: auto; margin-right: 1em;">
@@ -382,9 +383,10 @@
             
             const metadataItems = [];
             
-            if (doc.author) {
-              metadataItems.push(`<small><strong>Author:</strong> ${doc.author}</small>`);
-            }
+            // Author is already displayed prominently above, so skip it in metadata
+            // if (doc.author) {
+            //   metadataItems.push(`<small><strong>Author:</strong> ${doc.author}</small>`);
+            // }
             
             if (doc.file_type) {
               metadataItems.push(`<small><strong>Type:</strong> ${doc.file_type}</small>`);
@@ -430,6 +432,33 @@
             
             messageDiv.appendChild(docArticle);
           });
+          
+          // Add knowledge graph panel after retrieved documents
+          const graphPanel = document.createElement('section');
+          graphPanel.className = 'graph-panel';
+          
+          const graphTitle = document.createElement('h2');
+          graphTitle.textContent = 'Retrieved document connections';
+          graphPanel.appendChild(graphTitle);
+          
+          // Create container for ECharts graph
+          const graphContainer = document.createElement('div');
+          graphContainer.id = 'filtered-graph-' + Date.now();
+          graphContainer.className = 'graph';
+          graphContainer.style.width = '100%';
+          graphContainer.style.height = '400px';
+          graphPanel.appendChild(graphContainer);
+          
+          messageDiv.appendChild(graphPanel);
+          
+          // Load and render filtered graph (async, don't block)
+          loadFilteredGraph(graphContainer.id, retrievedDocs).catch(err => {
+            console.error('Failed to load filtered graph:', err);
+            const container = document.getElementById(graphContainer.id);
+            if (container) {
+              container.innerHTML = '<p style="text-align: center; color: #666; padding: 2em;">Graph loading failed. Please try again.</p>';
+            }
+          });
         }
         
         outputPanel.appendChild(messageDiv);
@@ -443,6 +472,118 @@
         const message = document.getElementById(messageId);
         if (message) {
           message.remove();
+        }
+      }
+      
+      // Load filtered knowledge graph
+      async function loadFilteredGraph(containerId, retrievedDocs) {
+        try {
+          // Extract file paths from retrieved documents
+          const filePaths = retrievedDocs.map(doc => doc.file_path || doc.title);
+          
+          if (filePaths.length === 0) {
+            document.getElementById(containerId).innerHTML = '<p style="text-align: center; color: #666; padding: 2em;">No documents to display connections for.</p>';
+            return;
+          }
+          
+          console.log('Loading filtered graph for files:', filePaths);
+          
+          // Call the filtered graph endpoint
+          const response = await fetch(API_URL + '/graph/filtered', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(filePaths)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const graphData = await response.json();
+          console.log('Filtered graph data received:', graphData);
+          
+          // Check if ECharts is available
+          if (typeof echarts === 'undefined') {
+            throw new Error('ECharts library not loaded');
+          }
+          
+          // Initialize ECharts
+          const dom = document.getElementById(containerId);
+          if (!dom) {
+            throw new Error('Graph container not found');
+          }
+          const myChart = echarts.init(dom);
+          
+          if (!graphData.nodes || graphData.nodes.length === 0) {
+            dom.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; font-family: Arial; color: #666;"><p>No connections found for retrieved documents.</p></div>';
+            return;
+          }
+          
+          // Configure graph options
+          const option = {
+            title: {
+              text: 'Document Connections',
+              subtext: 'Highlighted: Retrieved Documents | Dashed: Related Documents',
+              top: 'bottom',
+              left: 'right',
+              textStyle: {
+                fontSize: 14
+              },
+              subtextStyle: {
+                fontSize: 11
+              }
+            },
+            tooltip: {},
+            legend: [{
+              data: (graphData.categories || []).map(function (a) { return a.name; })
+            }],
+            series: [
+              {
+                type: 'graph',
+                layout: 'force',
+                data: graphData.nodes,
+                links: graphData.links,
+                categories: graphData.categories,
+                roam: true,
+                label: {
+                  show: true,
+                  position: 'right',
+                  formatter: '{b}'
+                },
+                labelLayout: {
+                  hideOverlap: true
+                },
+                scaleLimit: {
+                  min: 0.4,
+                  max: 2
+                },
+                lineStyle: {
+                  color: 'source',
+                  curveness: 0.3
+                },
+                force: {
+                  repulsion: 500,
+                  edgeLength: [50, 200]
+                }
+              }
+            ]
+          };
+          
+          myChart.setOption(option);
+          
+          // Handle window resize
+          window.addEventListener('resize', function() {
+            myChart.resize();
+          });
+          
+        } catch (error) {
+          console.error('Error loading filtered graph:', error);
+          const container = document.getElementById(containerId);
+          if (container) {
+            container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; font-family: Arial; color: #c62828; padding: 2em;"><div style="text-align: center;"><p style="font-size: 1em; margin-bottom: 1em;">Error loading graph: ' + error.message + '</p></div></div>';
+          }
         }
       }
       

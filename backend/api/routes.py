@@ -94,6 +94,19 @@ async def get_knowledge_graph(request: Request):
         raise HTTPException(status_code=500, detail=f"Error generating knowledge graph: {str(e)}")
 
 
+@router.post("/graph/filtered")
+async def get_filtered_knowledge_graph(request: Request, file_paths: List[str]):
+    """Get knowledge graph data only for specified file paths and their connections."""
+    vector_store = request.app.state.vector_store
+    
+    try:
+        graph_service = KnowledgeGraphService(vector_store)
+        graph_data = await graph_service.generate_filtered_graph(file_paths)
+        return graph_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating filtered knowledge graph: {str(e)}")
+
+
 @router.post("/transcribe")
 async def transcribe_audio(request: Request, file: UploadFile = File(...)):
     """Transcribe audio file and save as text."""
