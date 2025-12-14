@@ -285,16 +285,16 @@ def ask(req: AskReq):
 @app.get("/graph")
 def get_knowledge_graph():
     try:
-        # 1. 获取所有数据
+        # 1. Get all data
         data = collection.get(include=['metadatas', 'embeddings'])
         if not data or not data.get('metadatas'):
             return {"nodes": [], "links": [], "categories": []}
 
-        # Embedding 安全检查
+        # Embedding safety check
         embeddings = data.get('embeddings', [])
         has_embeddings = (embeddings is not None and len(embeddings) > 0)
 
-        # 2. 聚合 Chunk 为 File
+        # 2. Aggregate Chunks into Files
         files_map = {}
         embedding_dim = 1536 
         if has_embeddings:
@@ -309,23 +309,23 @@ def get_knowledge_graph():
                 files_map[fname] = {
                     "author": meta.get('author', 'Unknown'),
                     "created_at": meta.get('created_at', 'Unknown'),
-                    "keywords": set(), # 使用集合存储【单词】
+                    "keywords": set(), # Use set to store words
                     "embeddings": [],
                     "chunk_count": 0
                 }
             
-            # --- 核心修改1：关键词分词处理 (Token-based) ---
+            # --- Core modification 1: Keyword tokenization (Token-based) ---
             if 'keywords' in meta and meta['keywords']:
-                # 先按逗号分割成短语
+                # First split by comma into phrases
                 raw_phrases = [k.strip().lower() for k in meta['keywords'].split(',') if k.strip()]
                 for phrase in raw_phrases:
-                    # 再正则拆分成单词，去掉标点符号
+                    # Then split into words using regex, removing punctuation
                     words = re.findall(r'\w+', phrase)
-                    # 过滤掉太短的词(如 'a', 'of', 'in')，避免无意义连接
+                    # Filter out short words (like 'a', 'of', 'in') to avoid meaningless connections
                     valid_words = [w for w in words if len(w) > 2] 
                     files_map[fname]['keywords'].update(valid_words)
                 
-            # 收集 Embedding
+            # Collect Embeddings
             if has_embeddings and i < len(embeddings):
                 curr_emb = embeddings[i]
                 if curr_emb is not None and len(curr_emb) > 0:
@@ -333,7 +333,7 @@ def get_knowledge_graph():
                 
             files_map[fname]['chunk_count'] += 1
 
-        # 3. 构建节点 (Nodes)
+        # 3. Build nodes
         nodes = []
         categories = []
         author_map = {} 
@@ -347,7 +347,7 @@ def get_knowledge_graph():
             info = files_map[fname]
             raw_author = info['author'].strip()
             
-            # --- 规则优化：作者清洗与分类 ---
+            # --- Rule optimization: Author cleaning and categorization ---
             is_unknown = raw_author.lower() in ["unknown author", "unknown", "n/a", "", "none"]
             author_key = "Unknown" if is_unknown else raw_author
             
@@ -355,12 +355,12 @@ def get_knowledge_graph():
                 author_map[author_key] = len(categories)
                 categories.append({"name": author_key})
             
-            # --- 核心修改2：时间亮度计算 (Opacity) ---
+            # --- Core modification 2: Time-based opacity calculation ---
             opacity = 1.0 
             try:
                 created_dt = None
                 date_str = str(info['created_at']).strip()
-                # 尝试解析多种日期格式
+                # Try parsing multiple date formats
                 for fmt in ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y%m%d"]:
                     try:
                         created_dt = datetime.strptime(date_str, fmt)
@@ -371,9 +371,9 @@ def get_knowledge_graph():
                     days_diff = (current_time - created_dt).days
                     if days_diff < 0: days_diff = 0
                     
-                    # 0-90天: 亮度 1.0 (非常亮)
-                    # 90-365天: 亮度 0.8
-                    # >1年: 线性衰减，最低 0.2
+                    # 0-90 days: opacity 1.0 (very bright)
+                    # 90-365 days: opacity 0.8
+                    # >1 year: linear decay, minimum 0.2
                     if days_diff <= 90:
                         opacity = 1.0
                     elif days_diff <= 365:
@@ -381,33 +381,33 @@ def get_knowledge_graph():
                     else:
                         opacity = max(0.2, 0.8 - ((days_diff - 365) / (365 * 2)))
                 else:
-                    opacity = 0.5 # 无日期信息，给个中间值
+                    opacity = 0.5 # No date info, use middle value
             except:
                 opacity = 0.5 
 
-            # 计算平均向量
+            # Calculate average embedding vector
             avg_emb = np.zeros(embedding_dim)
             valid_embs = [e for e in info['embeddings'] if e is not None and len(e) == embedding_dim]
             if valid_embs:
                 avg_emb = np.mean(valid_embs, axis=0)
             file_avg_embeddings.append(avg_emb)
             
-            # --- 节点样式配置 ---
+            # --- Node style configuration ---
             item_style = {
                 "opacity": opacity,
                 "borderColor": "#fff" if opacity > 0.8 else "transparent", 
                 "borderWidth": 1
             }
             
-            # 标签样式：暗节点标签也变灰，避免喧宾夺主
+            # Label style: dark nodes have gray labels to avoid distraction
             label_style = {
                 "show": True,
                 "color": "#333" if opacity > 0.7 else "#aaa"
             }
 
-            # --- 核心修改3：未知作者强制变灰 ---
+            # --- Core modification 3: Force unknown authors to gray ---
             if is_unknown:
-                item_style["color"] = "#cccccc" # 强制灰色
+                item_style["color"] = "#cccccc" # Force gray color
                 label_style["color"] = "#999999"
 
             nodes.append({
@@ -420,11 +420,11 @@ def get_knowledge_graph():
                 "label": label_style
             })
 
-        # 4. 构建边 (Links)
+        # 4. Build edges (Links)
         links = []
         connection_counts = {i: 0 for i in range(len(nodes))}
         
-        # 计算相似度矩阵
+        # Calculate similarity matrix
         sim_matrix = np.zeros((len(nodes), len(nodes)))
         if len(file_avg_embeddings) > 0:
             try:
@@ -438,21 +438,21 @@ def get_knowledge_graph():
                 source_file = file_names[i]
                 target_file = file_names[j]
                 
-                # --- 核心修改4：集合交集匹配 ---
-                # 因为前面已经把关键词拆分成单词存入 set 了，这里直接取交集
+                # --- Core modification 4: Set intersection matching ---
+                # Since keywords have been split into words and stored in sets, directly get intersection
                 kw_a = files_map[source_file]['keywords']
                 kw_b = files_map[target_file]['keywords']
                 
                 intersection = kw_a.intersection(kw_b)
-                match_count = len(intersection) # 共同单词的数量
+                match_count = len(intersection) # Number of common words
                 
-                # 安全获取相似度分数
+                # Safely get similarity score
                 raw_score = sim_matrix[i][j]
                 sem_score = float(raw_score) 
                 
-                # 只要有 1 个单词相同就连接
+                # Connect if there's at least 1 common word
                 if match_count > 0:
-                    # 连线宽度：匹配词越多越粗 (1个词宽1.5, 5个词宽3.5)
+                    # Line width: more matching words = thicker line (1 word = 1.5, 5 words = 3.5)
                     width = 1 + (match_count * 0.5) 
                     
                     links.append({
@@ -464,9 +464,9 @@ def get_knowledge_graph():
                             "type": "solid",
                             "opacity": 0.6,
                             "curveness": 0.2,
-                            "color": "source" # 颜色跟随源节点
+                            "color": "source" # Color follows source node
                         },
-                        # Tooltip 显示共同的单词
+                        # Tooltip shows common words
                         "tooltip": {"formatter": f"Shared: {', '.join(list(intersection)[:10])}"}
                     })
                     connection_counts[i] += 1
@@ -487,7 +487,7 @@ def get_knowledge_graph():
                         "tooltip": {"formatter": f"Semantic Similarity: {sem_score:.2f}"}
                     })
 
-        # 5. 根据连接数调整节点大小
+        # 5. Adjust node size based on connection count
         for i in range(len(nodes)):
             size = 10 + (connection_counts[i] * 2)
             nodes[i]["symbolSize"] = min(size, 70)
