@@ -3,6 +3,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 # Import router directly to avoid circular imports
@@ -11,6 +12,7 @@ from backend.services.embedding_service import EmbeddingService
 from backend.services.vector_store import VectorStore
 from backend.services.chat_service import ChatService
 from backend.services.document_processor import DocumentProcessor
+from backend.services.transcription_service import TranscriptionService
 from backend.config import settings
 from pathlib import Path
 import asyncio
@@ -27,12 +29,14 @@ async def lifespan(app: FastAPI):
     
     chat_service = ChatService(embedding_service, vector_store)
     document_processor = DocumentProcessor(embedding_service, chat_service)
+    transcription_service = TranscriptionService()
     
     # Store services in app state
     app.state.embedding_service = embedding_service
     app.state.vector_store = vector_store
     app.state.chat_service = chat_service
     app.state.document_processor = document_processor
+    app.state.transcription_service = transcription_service
     
     # Auto-process Example-Files on startup (run in background to avoid blocking startup)
     print("🚀 Starting auto-processing of Example-Files in background...")
@@ -67,7 +71,7 @@ async def process_all_documents(app_state):
     documents_path = Path(settings.documents_path)
     
     # Find all supported files
-    supported_extensions = [".pdf", ".docx", ".pptx"]
+    supported_extensions = [".pdf", ".docx", ".pptx", ".txt"]
     files = [
         f for f in documents_path.iterdir()
         if f.suffix.lower() in supported_extensions
@@ -123,6 +127,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Root endpoint - redirect to main page
+@app.get("/")
+async def root():
+    """Root endpoint - redirects to main application page."""
+    return RedirectResponse(url="/webpages/find.html")
+
 # Include API router
 app.include_router(api_router, prefix="/api")
 
@@ -130,6 +140,9 @@ app.include_router(api_router, prefix="/api")
 webpages_path = Path(__file__).parent.parent / "webpages"
 if webpages_path.exists():
     app.mount("/webpages", StaticFiles(directory=str(webpages_path)), name="webpages")
+
+# Mount static files for Example-Files
+app.mount("/Example-Files", StaticFiles(directory=str(settings.documents_path)), name="files")
 
 # Health check endpoint
 @app.get("/health")

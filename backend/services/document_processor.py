@@ -39,6 +39,9 @@ class DocumentProcessor:
             elif file_path.suffix.lower() == ".pptx":
                 full_content, page_texts, author, created_at = self.extract_pptx(file_path)
                 file_type = FileType.PPTX
+            elif file_path.suffix.lower() == ".txt":
+                full_content, page_texts, author, created_at = self.extract_txt(file_path)
+                file_type = FileType.TXT
             else:
                 print(f"❌ Unsupported file type: {file_path.suffix}")
                 return None
@@ -138,6 +141,14 @@ class DocumentProcessor:
         created_at = core_properties.created
 
         return full_text, slide_texts, author, created_at
+
+    def extract_txt(self, file_path: Path) -> Tuple[str, List[str], Optional[str], Optional[datetime]]:
+        """Extract text from TXT file."""
+        full_content = file_path.read_text(encoding='utf-8')
+        page_texts = [full_content]
+        author = None
+        created_at = None
+        return full_content, page_texts, author, created_at
 
     async def generate_summary_and_keywords(self, full_content: str, title: str) -> Tuple[str, List[str]]:
         """Generate summary and keywords using separate functions."""

@@ -128,7 +128,16 @@
     </section>
     <script>
       // Configuration
-      const API_BASE = window.location.protocol + '//' + window.location.host.split(':')[0] + ':8000';
+      // If accessed via ngrok or same domain, use current origin
+      // Otherwise, use localhost:8000
+      let API_BASE;
+      if (window.location.hostname.includes('ngrok') || window.location.hostname.includes('ngrok-free') || window.location.hostname.includes('ngrok.io')) {
+        // Accessing via ngrok - use same origin
+        API_BASE = window.location.origin;
+      } else {
+        // Local access - use port 8000
+        API_BASE = window.location.protocol + '//' + window.location.host.split(':')[0] + ':8000';
+      }
       const API_URL = API_BASE + '/api';
       
       // Debug: Log API URL
