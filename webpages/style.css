@@ -1,6 +1,8 @@
 
 
 body {
+  margin: 0;
+  padding: 0;
   color: #524f47;
   background-color: white;
   font-family: "Noto Sans", sans-serif;
@@ -39,8 +41,8 @@ h1 {
 #splash-screen-panel {
   justify-content: center;
   box-shadow: 14px 14px 14px rgba(0, 0, 0, 0.5);
-  background-color: rgb(210,231,240);
-  /* background-color: #bcd2ff; */
+  /* background-color: rgb(210,231,240); */
+  background-color: #bcd2ff;
   padding: 1em 2em 1em 2em;
 }
 
@@ -56,13 +58,90 @@ h1 {
 
 }
 
-#onboard-nav {
+#splash-screen-nav, #onboard-nav {
   display: flex;
-  justify-content: space-between;
+  padding-top: 1em;
 }
 
 #splash-screen-nav {
+  justify-content: flex-end;
+}
+
+#onboard-nav {
+  justify-content: space-between;
+}
+
+#page-logo {
+  height: 50px;
+margin-right: 10px;
+}
+
+#input-panel {
+  display: flex;
+  justify-content: flex-start;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 1.2em;
+  background-color: white;
+  border-bottom: 2px solid #C9BEC0;
+  height: 48px;
+  /* box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3); */
+  
+
+}
+
+#prompt-box {
+  height: 44px;
+  margin: 0 3px 0 10px;
+  min-width: 50vw;
+  text-align: center;
+  border-radius: 5px;
+  border: 2px solid #C9BEC0;
+}
+
+#prompt-btn {
+  height: 50px;
+  width: 50px;
+  background-color: #001158;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+#output-panel {
+  /* padding: 88px 90px 40px 90px; */
+  padding: 90px 90px 40px 90px;
+
+}
+
+.chat-bubble-self, .chat-bubble-bot {
+  padding: 0.8em;
+}
+
+.chat-bubble-self {
+  background-color: #CAE9FF;
+  border-top-left-radius: 1em;
+  border-bottom-left-radius: 1em;
+  text-align: right;
+  max-width: 40%;
+  
+}
+
+.chat-bubble-bot {
+  background-color: #ccbbff;
+    border-top-right-radius: 1em;
+  border-bottom-right-radius: 1em;
+  text-align: left;
+  max-width: 40%;
+}
+
+.chat-human {
   display: flex;
   justify-content: flex-end;
-  padding-top: 1em;
+}
+
+.chat-reply {
+  display: flex;
+  justify-content: flex-start;
 }
