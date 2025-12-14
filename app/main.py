@@ -1,4 +1,6 @@
 import os
+import re
+import fitz
 import glob
 import json
 import requests
@@ -9,8 +11,8 @@ from pptx import Presentation
 import chromadb
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from dotenv import load_dotenv
-
 # --- 配置加载 ---
+
 load_dotenv()
 API_KEY = os.getenv("GREENPT_API_KEY")
 API_BASE = os.getenv("GREENPT_API_URL", "https://api.greenpt.ai/v1").rstrip('/')
@@ -104,6 +106,92 @@ def generate_file_metadata(full_text: str) -> Dict[str, str]:
         print(f"Metadata Generation Error: {e}")
         return {"summary": "Error generating summary", "keywords": "Error"}
 
+
+# --- 辅助函数：PDF 文本清洗 ---
+def clean_text(text: str) -> str:
+    """清洗提取出的文本，去除多余空白和换行"""
+    if not text: return ""
+    # 将多余的空白字符（包括换行）替换为单个空格
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+# --- 辅助函数：处理 PDF 文件 ---
+def process_pdf_file(fpath):
+    try:
+        doc = fitz.open(fpath)
+        fname = os.path.basename(fpath)
+        
+        # 提取元数据
+        meta = doc.metadata
+        author = meta.get('author', 'Unknown Author') if meta else "Unknown Author"
+        # PDF 的创建时间通常比较乱，这里简化处理，如有需要可用正则解析
+        created_at = meta.get('creationDate', 'Unknown Date') if meta else "Unknown Date"
+
+        all_text_list = []
+        slides_content = []
+
+        for i, page in enumerate(doc):
+            # 获取页面文本 (按 blocks 获取更有结构感，这里为了通用简化为 text)
+            raw_text = page.get_text()
+            cleaned = clean_text(raw_text)
+            
+            # 只有当页面有实质内容时才保留
+            if len(cleaned) > 10:
+                all_text_list.append(cleaned)
+                slides_content.append({
+                    "text": cleaned,
+                    "page": i + 1,
+                    "source_type": "PDF"
+                })
+        
+        return {
+            "author": author,
+            "created_at": created_at,
+            "full_text": "\n\n".join(all_text_list),
+            "chunks": slides_content
+        }
+    except Exception as e:
+        print(f"Error reading PDF {fpath}: {e}")
+        return None
+
+# --- 辅助函数：处理 PPTX 文件 ---
+def process_pptx_file(fpath):
+    try:
+        prs = Presentation(fpath)
+        
+        # 提取元数据
+        core_props = prs.core_properties
+        author = core_props.author if core_props.author else "Unknown Author"
+        created_at = "Unknown Date"
+        if core_props.created:
+            try: created_at = core_props.created.strftime("%Y-%m-%d")
+            except: pass
+            
+        all_text_list = []
+        slides_content = []
+        
+        for i, slide in enumerate(prs.slides):
+            texts = [s.text for s in slide.shapes if hasattr(s, "text") and s.text]
+            page_text = "\n".join(texts).strip()
+            
+            if len(page_text) > 10:
+                all_text_list.append(page_text)
+                slides_content.append({
+                    "text": page_text,
+                    "page": i + 1,
+                    "source_type": "PPTX"
+                })
+                
+        return {
+            "author": author,
+            "created_at": created_at,
+            "full_text": "\n\n".join(all_text_list),
+            "chunks": slides_content
+        }
+    except Exception as e:
+        print(f"Error reading PPTX {fpath}: {e}")
+        return None
+
 # --- 核心工具：重排序 (Rerank) ---
 def rerank_docs(query: str, documents: List[str], metadatas: List[Dict], top_n=3):
     if not documents:
@@ -148,55 +236,53 @@ def rerank_docs(query: str, documents: List[str], metadatas: List[Dict], top_n=3
 # --- 接口：Ingest (增强版) ---
 @app.post("/ingest")
 def ingest():
-    files = glob.glob("/app_data/*.pptx")
-    if not files: return {"error": "No files found"}
+    # 1. 扫描两种类型的文件
+    pptx_files = glob.glob("/app_data/*.pptx")
+    pdf_files = glob.glob("/app_data/*.pdf")
+    all_files = pptx_files + pdf_files
     
-    total_slides = 0
+    if not all_files: return {"error": "No files found"}
+    
+    total_chunks = 0
     processed_files = 0
     
-    for fpath in files:
+    for fpath in all_files:
+        fname = os.path.basename(fpath)
+        print(f"Processing File: {fname}")
+        
+        extracted_data = None
+        
+        # 2. 根据后缀名分流处理
+        if fpath.lower().endswith(".pdf"):
+            extracted_data = process_pdf_file(fpath)
+        elif fpath.lower().endswith(".pptx") or fpath.lower().endswith(".ppt"):
+            extracted_data = process_pptx_file(fpath)
+            
+        # 如果提取失败或文件为空，跳过
+        if not extracted_data or not extracted_data['full_text']:
+            print(f"Skipping {fname} (No content or error)")
+            continue
+
+        # 3. AI 生成总结和关键词 (通用逻辑)
+        # 注意：这里复用了你原本的 generate_file_metadata 函数
         try:
-            prs = Presentation(fpath)
-            fname = os.path.basename(fpath)
-            print(f"Processing File: {fname}")
-            
-            # 1. 提取文件级元数据 (File-level Metadata)
-            core_props = prs.core_properties
-            author = core_props.author if core_props.author else "Unknown Author"
-            # 处理时间格式，防止出错
-            created_at = "Unknown Date"
-            if core_props.created:
-                try: created_at = core_props.created.strftime("%Y-%m-%d")
-                except: pass
-            
-            # 2. 提取全文用于生成总结
-            all_text_list = []
-            slides_content = [] # 暂存幻灯片内容，避免二次遍历
-            
-            for i, slide in enumerate(prs.slides):
-                texts = [s.text for s in slide.shapes if hasattr(s, "text") and s.text]
-                page_text = "\n".join(texts).strip()
-                if len(page_text) > 10:
-                    all_text_list.append(page_text)
-                    slides_content.append({"text": page_text, "page": i+1})
-            
-            full_text_concat = "\n\n".join(all_text_list)
-            
-            # 3. AI 生成总结和关键词
-            ai_meta = generate_file_metadata(full_text_concat)
+            ai_meta = generate_file_metadata(extracted_data['full_text'])
             print(f"  > Generated Summary: {ai_meta['summary'][:50]}...")
-            
-            # 4. 存入数据库 (Chunking + Metadata Injection)
-            for item in slides_content:
-                # 组合所有元数据
-                # 注意：ChromaDB 的 metadata 值通常只能是 String, Int, Float, Bool
+        except Exception as e:
+            print(f"  > AI Summary generation failed for {fname}: {e}")
+            ai_meta = {"summary": "Summary generation failed", "keywords": "N/A"}
+
+        # 4. 存入数据库 (通用逻辑)
+        try:
+            for item in extracted_data['chunks']:
                 metadata = {
                     "source": fname,
                     "page": item['page'],
-                    "author": author,
-                    "created_at": created_at,
-                    "summary": ai_meta['summary'],   # 每个切片都带上整份 PPT 的总结
-                    "keywords": ai_meta['keywords']  # 每个切片都带上整份 PPT 的关键词
+                    "author": extracted_data['author'],
+                    "created_at": extracted_data['created_at'],
+                    "file_type": item['source_type'], # 新增字段：文件类型
+                    "summary": ai_meta['summary'],
+                    "keywords": ai_meta['keywords']
                 }
                 
                 collection.add(
@@ -204,17 +290,17 @@ def ingest():
                     metadatas=[metadata],
                     ids=[f"{fname}_{item['page']}"]
                 )
-                total_slides += 1
+                total_chunks += 1
             
             processed_files += 1
             
         except Exception as e:
-            print(f"Error processing {fpath}: {e}")
+            print(f"Error inserting into DB for {fname}: {e}")
             
     return {
         "status": "ok", 
         "files": processed_files, 
-        "slides": total_slides,
+        "chunks": total_chunks,
         "message": "Metadata enrichment complete."
     }
 
