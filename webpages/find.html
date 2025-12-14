@@ -10,84 +10,446 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      .retrieved-doc {
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196F3;
+        padding: 1em;
+        margin: 1em 0;
+        border-radius: 5px;
+      }
+      
+      .retrieved-doc h4 {
+        margin: 0 0 0.5em 0;
+        color: #001158;
+      }
+      
+      .retrieved-doc .doc-content {
+        font-size: 0.9em;
+        color: #555;
+        margin-top: 0.5em;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      
+      .keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5em;
+        margin-top: 0.5em;
+      }
+      
+      .keyword-tag {
+        background-color: #001158;
+        color: white;
+        padding: 0.2em 0.5em;
+        border-radius: 3px;
+        font-size: 0.8em;
+      }
+      
+      .document-meta {
+        display: flex;
+        gap: 1em;
+        font-size: 0.85em;
+        color: #999;
+        margin-top: 0.5em;
+      }
+      
+      /* Markdown styling in chat bubbles */
+      .chat-bubble-bot h1, .chat-bubble-bot h2, .chat-bubble-bot h3,
+      .chat-bubble-bot h4, .chat-bubble-bot h5, .chat-bubble-bot h6 {
+        margin-top: 0.5em;
+        margin-bottom: 0.3em;
+        color: #001158;
+      }
+      
+      .chat-bubble-bot p {
+        margin: 0.5em 0;
+      }
+      
+      .chat-bubble-bot ul, .chat-bubble-bot ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+      }
+      
+      .chat-bubble-bot code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+      }
+      
+      .chat-bubble-bot pre {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 0.8em;
+        border-radius: 4px;
+        overflow-x: auto;
+        margin: 0.5em 0;
+      }
+      
+      .chat-bubble-bot pre code {
+        background-color: transparent;
+        padding: 0;
+      }
+      
+      .chat-bubble-bot blockquote {
+        border-left: 3px solid #001158;
+        padding-left: 1em;
+        margin: 0.5em 0;
+        color: #666;
+        font-style: italic;
+      }
+      
+      .chat-bubble-bot a {
+        color: #001158;
+        text-decoration: underline;
+      }
+    </style>
   </head>
   <body id="lumc">
-    <!-- <header>
-    <h1>Title</h1>
-    </header> -->
     <section id="input-panel">
       <img src ="img/Tacit-logo-1colour.svg" alt="Tacit Insights logo" id="page-logo"/>
-      <form action="">
+      <form id="chat-form" onsubmit="event.preventDefault(); sendMessage();">
         <input type="text" id="prompt-box" placeholder="What are you looking for?">
-        <!-- <textarea id="prompt-box" placeholder="What are you looking for?"></textarea> -->
-        <input type="submit" id="prompt-btn"value="Go">
+        <input type="submit" id="prompt-btn" value="Go">
       </form>
+      <div id="status-area" style="display: flex; align-items: center; gap: 1em; margin-left: auto; margin-right: 1em;">
+        <a href="graph.html" target="_blank" style="color: #001158; text-decoration: none; font-weight: 500; padding: 0.3em 0.8em; border: 1px solid #001158; border-radius: 5px; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#001158'; this.style.color='white';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#001158';">📊 Knowledge Graph</a>
+        <span id="status-indicator" style="display: flex; align-items: center; gap: 0.5em; font-size: 0.9em; color: #524f47;">
+          <span class="status-dot" id="status-dot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #f44336;"></span>
+          <span id="status-text">Checking...</span>
+        </span>
+      </div>
     </section>
     <section id="output-panel">
-      <div class="chat-human">
-        <p class="chat-bubble-self">This is a prompt by the human</p>
-      </div>
-      <div class="chat-reply">
-        <p class="chat-bubble-bot">This is a reply from the bot</p>
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-      </div>
-
-      <article class="search-result">
-      <h2>Heading 2</h2>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <h3>Heading 3</h3>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <!-- <details>
-        <summary>More</summary>
-        <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      </details> -->
-      <p><cite class="article-title">Title</cite>, <span class="article-author">Author</span></p>
-      <small class="article-date">13 December2025</small>
-      <small class="article-email"><a href="mailto:author@article.com">author@article.com</a></small>
-      <div class="feedback-article">
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-        <a href="#"><img src="img/open_in_new_24dp_524F47_FILL0_wght400_GRAD0_opsz24.svg" alt="open in a new window" class="open-in-new-icon"/></a>
-        </div>
-      </article>
-
-      <article class="search-result">
-      <h2>Heading 2</h2>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <h3>Heading 3</h3>
-      <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      <!-- <details>
-        <summary>More</summary>
-        <p>Cupcake ipsum dolor sit amet tiramisu. Sesame snaps dragée dessert tootsie roll dragée oat cake jujubes. Marzipan tiramisu topping sugar plum danish caramels halvah marzipan biscuit. Gingerbread pie icing cake chocolate cake lemon drops gingerbread.</p>
-      </details> -->
-      <p><cite class="article-title">Title</cite>, <span class="article-author">Author</span></p>
-      <small class="article-date">13 December2025</small>
-      <small class="article-email"><a href="mailto:author@article.com">author@article.com</a></small>
-      <div class="feedback-article">
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-        <a href="#"><img src="img/open_in_new_24dp_524F47_FILL0_wght400_GRAD0_opsz24.svg" alt="open in a new window" class="open-in-new-icon"/></a>
-        </div>
-      </article>
-
-      <div class="chat-human">
-        <p class="chat-bubble-self">This is a prompt by the human</p>
-      </div>
-      <div class="chat-reply">
-        <p class="chat-bubble-bot">This is a reply from the bot</p>
-        <div class="feedback">
-          <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
-          <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
-        </div>
-      </div>
-
+      <!-- Chat messages will be added here dynamically -->
     </section>
+    <script>
+      // Configuration
+      const API_BASE = window.location.protocol + '//' + window.location.host.split(':')[0] + ':8000';
+      const API_URL = API_BASE + '/api';
+      
+      // Debug: Log API URL
+      console.log('API URL:', API_URL);
+      
+      // State
+      let conversationHistory = [];
+      
+      // Check backend status
+      async function checkStatus() {
+        try {
+          console.log('Checking status at:', API_URL + '/status');
+          const response = await fetch(API_URL + '/status');
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('Status response:', data);
+          
+          const statusDot = document.getElementById('status-dot');
+          const statusText = document.getElementById('status-text');
+          
+          if (data.status === 'healthy' && data.weaviate_connected) {
+            statusDot.style.backgroundColor = '#4CAF50';
+            statusText.textContent = `${data.processed_documents} docs, ${data.total_chunks} chunks`;
+          } else {
+            statusDot.style.backgroundColor = '#f44336';
+            statusText.textContent = 'Offline';
+          }
+        } catch (error) {
+          console.error('Status check error:', error);
+          const statusDot = document.getElementById('status-dot');
+          const statusText = document.getElementById('status-text');
+          statusDot.style.backgroundColor = '#f44336';
+          statusText.textContent = 'Error: ' + error.message;
+        }
+      }
+      
+      // Send message
+      async function sendMessage() {
+        const promptBox = document.getElementById('prompt-box');
+        const message = promptBox.value.trim();
+        
+        if (!message) return;
+        
+        console.log('Sending message:', message);
+        
+        // Disable input
+        promptBox.disabled = true;
+        document.getElementById('prompt-btn').disabled = true;
+        
+        // Clear prompt
+        promptBox.value = '';
+        
+        // Add user message to chat
+        addMessageToChat('user', message);
+        
+        // Show loading
+        const loadingId = addMessageToChat('bot', 'Thinking...');
+        
+        try {
+          const requestBody = {
+            message: message,
+            conversation_history: conversationHistory
+          };
+          
+          console.log('Sending request to:', API_URL + '/chat');
+          console.log('Request body:', requestBody);
+          
+          const response = await fetch(API_URL + '/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+          });
+          
+          console.log('Response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+          }
+          
+          const data = await response.json();
+          console.log('Response data:', data);
+          
+          // Remove loading message
+          removeMessage(loadingId);
+          
+          // Add bot response
+          addMessageToChat('bot', data.message, data.retrieved_documents || []);
+          
+          // Update conversation history
+          conversationHistory.push(
+            { role: 'user', content: message },
+            { role: 'assistant', content: data.message }
+          );
+          
+        } catch (error) {
+          console.error('Send message error:', error);
+          removeMessage(loadingId);
+          addMessageToChat('bot', '❌ Error: ' + error.message, []);
+        } finally {
+          // Re-enable input
+          promptBox.disabled = false;
+          document.getElementById('prompt-btn').disabled = false;
+          promptBox.focus();
+        }
+      }
+      
+      // Add message to chat
+      function addMessageToChat(role, content, retrievedDocs = []) {
+        const outputPanel = document.getElementById('output-panel');
+        const messageId = 'msg-' + Date.now() + '-' + Math.random();
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.id = messageId;
+        messageDiv.className = role === 'user' ? 'chat-human' : 'chat-reply';
+        
+        const bubble = document.createElement('div');
+        bubble.className = role === 'user' ? 'chat-bubble-self' : 'chat-bubble-bot';
+        
+        if (role === 'bot' && typeof marked !== 'undefined') {
+          // Render markdown for bot messages
+          bubble.innerHTML = marked.parse(content);
+          bubble.style.lineHeight = '1.6';
+        } else {
+          // Plain text for user messages
+          bubble.textContent = content;
+        }
+        
+        messageDiv.appendChild(bubble);
+        
+        // Add feedback buttons for bot messages
+        if (role === 'bot') {
+          const feedback = document.createElement('div');
+          feedback.className = 'feedback';
+          feedback.innerHTML = `
+            <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
+            <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
+          `;
+          messageDiv.appendChild(feedback);
+        }
+        
+        // Add retrieved documents if any
+        if (retrievedDocs && retrievedDocs.length > 0) {
+          retrievedDocs.forEach(doc => {
+            const docArticle = document.createElement('article');
+            docArticle.className = 'search-result';
+            
+            const title = document.createElement('h2');
+            title.textContent = doc.title || 'Untitled Document';
+            docArticle.appendChild(title);
+            
+            // Author information (displayed prominently below title)
+            if (doc.author) {
+              const authorInfo = document.createElement('p');
+              authorInfo.style.marginTop = '0.3em';
+              authorInfo.style.marginBottom = '0.5em';
+              authorInfo.style.fontSize = '0.95em';
+              authorInfo.style.color = '#666';
+              authorInfo.style.fontStyle = 'italic';
+              authorInfo.innerHTML = `<strong>Author:</strong> ${doc.author}`;
+              docArticle.appendChild(authorInfo);
+            }
+            
+            if (doc.summary) {
+              const summary = document.createElement('p');
+              summary.textContent = doc.summary;
+              docArticle.appendChild(summary);
+            }
+            
+            if (doc.content) {
+              const content = document.createElement('div');
+              content.className = 'doc-content';
+              content.style.marginTop = '0.5em';
+              content.style.padding = '0.8em';
+              content.style.backgroundColor = '#f9f9f9';
+              content.style.borderRadius = '4px';
+              content.style.fontSize = '0.9em';
+              content.style.color = '#555';
+              content.style.lineHeight = '1.6';
+              
+              // Render markdown if available, otherwise plain text
+              const contentText = doc.content.substring(0, 1000) + (doc.content.length > 1000 ? '...' : '');
+              if (typeof marked !== 'undefined') {
+                content.innerHTML = marked.parse(contentText);
+              } else {
+                content.textContent = contentText;
+              }
+              
+              docArticle.appendChild(content);
+            }
+            
+            // Document metadata
+            const meta = document.createElement('p');
+            meta.style.marginTop = '1em';
+            meta.style.fontSize = '0.9em';
+            meta.style.color = '#666';
+            
+            if (doc.author) {
+              const cite = document.createElement('cite');
+              cite.className = 'article-title';
+              cite.textContent = doc.title || 'Untitled';
+              meta.appendChild(cite);
+              
+              const author = document.createElement('span');
+              author.className = 'article-author';
+              author.textContent = ', ' + doc.author;
+              meta.appendChild(author);
+            }
+            
+            docArticle.appendChild(meta);
+            
+            // Keywords
+            if (doc.keywords && doc.keywords.length > 0) {
+              const keywordsDiv = document.createElement('div');
+              keywordsDiv.className = 'keywords';
+              keywordsDiv.style.marginTop = '0.5em';
+              doc.keywords.forEach(keyword => {
+                const tag = document.createElement('span');
+                tag.className = 'keyword-tag';
+                tag.textContent = keyword;
+                keywordsDiv.appendChild(tag);
+              });
+              docArticle.appendChild(keywordsDiv);
+            }
+            
+            // Document metadata info
+            const docInfo = document.createElement('div');
+            docInfo.className = 'document-meta';
+            docInfo.style.marginTop = '0.5em';
+            docInfo.style.display = 'flex';
+            docInfo.style.flexWrap = 'wrap';
+            docInfo.style.gap = '1em';
+            docInfo.style.fontSize = '0.85em';
+            docInfo.style.color = '#999';
+            
+            const metadataItems = [];
+            
+            if (doc.author) {
+              metadataItems.push(`<small><strong>Author:</strong> ${doc.author}</small>`);
+            }
+            
+            if (doc.file_type) {
+              metadataItems.push(`<small><strong>Type:</strong> ${doc.file_type}</small>`);
+            }
+            
+            if (doc.relevance_score !== undefined) {
+              metadataItems.push(`<small><strong>Relevance:</strong> ${(doc.relevance_score * 100).toFixed(1)}%</small>`);
+            }
+            
+            if (doc.chunking_strategy) {
+              metadataItems.push(`<small><strong>Chunk Strategy:</strong> ${doc.chunking_strategy}</small>`);
+            }
+            
+            if (doc.created_at) {
+              const date = new Date(doc.created_at);
+              const formattedDate = date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              });
+              metadataItems.push(`<small><strong>Created:</strong> ${formattedDate}</small>`);
+            }
+            
+            if (doc.file_path) {
+              const fileName = doc.file_path.split('/').pop() || doc.file_path.split('\\').pop() || doc.file_path;
+              metadataItems.push(`<small><strong>File:</strong> ${fileName}</small>`);
+            }
+            
+            docInfo.innerHTML = metadataItems.join('');
+            docArticle.appendChild(docInfo);
+            
+            // Feedback
+            const feedbackArticle = document.createElement('div');
+            feedbackArticle.className = 'feedback-article';
+            feedbackArticle.innerHTML = `
+              <div class="feedback">
+                <a href="#"><img src="img/thumb_up_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs up" class="feedback-icon-up"/></a>
+                <a href="#"><img src="img/thumb_down_16dp_C9BEC0_FILL0_wght400_GRAD0_opsz20.svg" alt="thumbs down" class="feedback-icon-down" /></a>
+              </div>
+              <a href="#"><img src="img/open_in_new_24dp_524F47_FILL0_wght400_GRAD0_opsz24.svg" alt="open in a new window" class="open-in-new-icon"/></a>
+            `;
+            docArticle.appendChild(feedbackArticle);
+            
+            messageDiv.appendChild(docArticle);
+          });
+        }
+        
+        outputPanel.appendChild(messageDiv);
+        outputPanel.scrollTop = outputPanel.scrollHeight;
+        
+        return messageId;
+      }
+      
+      // Remove message
+      function removeMessage(messageId) {
+        const message = document.getElementById(messageId);
+        if (message) {
+          message.remove();
+        }
+      }
+      
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        checkStatus();
+        // Check status every 30 seconds
+        setInterval(checkStatus, 30000);
+        
+        // Add Enter key support
+        document.getElementById('prompt-box').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            sendMessage();
+          }
+        });
+      });
+    </script>
   </body>
 </html>

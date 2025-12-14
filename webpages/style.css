@@ -79,6 +79,7 @@ margin-right: 10px;
 #input-panel {
   display: flex;
   justify-content: flex-start;
+  align-items: center;
   position: fixed;
   top: 0;
   width: 100%;
