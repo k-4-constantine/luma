@@ -3,6 +3,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 # Import router directly to avoid circular imports
@@ -122,6 +123,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root endpoint - redirect to main page
+@app.get("/")
+async def root():
+    """Root endpoint - redirects to main application page."""
+    return RedirectResponse(url="/webpages/find.html")
 
 # Include API router
 app.include_router(api_router, prefix="/api")
