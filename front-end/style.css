@@ -1,0 +1,51 @@
+
+
+body {
+  color: #524f47;
+  background-color: white;
+  font-family: "Noto Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+}
+
+#splash-screen {
+  max-width: 500px;
+  text-align: center;
+  margin:auto;
+}
+
+#splash-screen-panel {
+  justify-content: center;
+box-shadow: 14px 14px 14px rgba(0, 0, 0, 0.5);
+background-color: rgb(210,231,240);
+/* background-color: #bcd2ff; */
+  padding: 2em;
+}
+
+#splash-screen-nav {
+  display: flex;
+  justify-content: space-between;
+}
+
+.splash-screen-img {
+  max-width: 30vw;
+}
+
+h1 {
+    font-size: 2em;
+  color: #001158;
+  font-family: "Noto Serif", serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+}
+
+#tag-line {
+  font-size: 1.2em;
+  font-weight: 500;
+}
