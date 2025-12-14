@@ -56,7 +56,28 @@
         color: #999;
         margin-top: 0.5em;
       }
-      
+
+      #audio-upload {
+        display: none;
+      }
+
+      #upload-btn {
+        height: 40px;
+        width: 40px;
+        background-color: #001158;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1.2em;
+        margin-right: 8px;
+        padding: 0;
+      }
+
+      #upload-btn:hover {
+        background-color: #002288;
+      }
+
       /* Markdown styling in chat bubbles */
       .chat-bubble-bot h1, .chat-bubble-bot h2, .chat-bubble-bot h3,
       .chat-bubble-bot h4, .chat-bubble-bot h5, .chat-bubble-bot h6 {
@@ -113,7 +134,9 @@
     <section id="input-panel">
       <img src ="img/Tacit-logo-1colour.svg" alt="Tacit Insights logo" id="page-logo"/>
       <form id="chat-form" onsubmit="event.preventDefault(); sendMessage();">
-        <input type="text" id="prompt-box" placeholder="What are you looking for? Try dragging an audio here">
+        <input type="file" id="audio-upload" accept=".mp3,.mp4,.wav,.m4a" />
+        <input type="text" id="prompt-box" placeholder="What are you looking for?">
+        <button type="button" id="upload-btn" onclick="document.getElementById('audio-upload').click()">🎤</button>
         <input type="submit" id="prompt-btn" value="Go">
       </form>
       <div id="status-area" style="display: flex; align-items: center; gap: 1em; margin-left: auto; margin-right: 1em;">
@@ -140,25 +163,20 @@
         API_BASE = window.location.protocol + '//' + window.location.host.split(':')[0] + ':8000';
       }
       const API_URL = API_BASE + '/api';
-      
-      // Debug: Log API URL
-      console.log('API URL:', API_URL);
-      
+
       // State
       let conversationHistory = [];
       
       // Check backend status
       async function checkStatus() {
         try {
-          console.log('Checking status at:', API_URL + '/status');
           const response = await fetch(API_URL + '/status');
-          
+
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          
+
           const data = await response.json();
-          console.log('Status response:', data);
           
           const statusDot = document.getElementById('status-dot');
           const statusText = document.getElementById('status-text');
@@ -183,11 +201,9 @@
       async function sendMessage() {
         const promptBox = document.getElementById('prompt-box');
         const message = promptBox.value.trim();
-        
+
         if (!message) return;
-        
-        console.log('Sending message:', message);
-        
+
         // Disable input
         promptBox.disabled = true;
         document.getElementById('prompt-btn').disabled = true;
@@ -206,10 +222,7 @@
             message: message,
             conversation_history: conversationHistory
           };
-          
-          console.log('Sending request to:', API_URL + '/chat');
-          console.log('Request body:', requestBody);
-          
+
           const response = await fetch(API_URL + '/chat', {
             method: 'POST',
             headers: {
@@ -217,18 +230,14 @@
             },
             body: JSON.stringify(requestBody)
           });
-          
-          console.log('Response status:', response.status);
-          
+
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('Error response:', errorText);
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
           }
-          
+
           const data = await response.json();
-          console.log('Response data:', data);
-          
+
           // Remove loading message
           removeMessage(loadingId);
           
@@ -252,7 +261,18 @@
           promptBox.focus();
         }
       }
-      
+
+      // Update message in chat
+      function updateMessageInChat(messageId, newContent) {
+        const messageDiv = document.getElementById(messageId);
+        if (messageDiv) {
+          const bubble = messageDiv.querySelector('.chat-bubble-self, .chat-bubble-bot');
+          if (bubble) {
+            bubble.textContent = newContent;
+          }
+        }
+      }
+
       // Add message to chat
       function addMessageToChat(role, content, retrievedDocs = []) {
         const outputPanel = document.getElementById('output-panel');
@@ -597,6 +617,74 @@
         document.getElementById('prompt-box').addEventListener('keypress', function(e) {
           if (e.key === 'Enter') {
             sendMessage();
+          }
+        });
+
+        // Setup audio upload
+        document.getElementById('audio-upload').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          // Disable buttons
+          const promptBox = document.getElementById('prompt-box');
+          const promptBtn = document.getElementById('prompt-btn');
+          const uploadBtn = document.getElementById('upload-btn');
+
+          promptBox.disabled = true;
+          promptBtn.disabled = true;
+          uploadBtn.disabled = true;
+
+          // Show loading message
+          const loadingId = addMessageToChat('bot', `Transcribing ${file.name}...`);
+
+          try {
+            // Create FormData and upload
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(API_URL + '/transcribe', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Transcription failed: ${response.statusText} - ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            // Update chat with transcript
+            updateMessageInChat(loadingId, `Transcript from ${file.name}:`);
+            addMessageToChat('bot', data.transcript);
+
+            // Show download link
+            const downloadLink = document.createElement('a');
+            downloadLink.href = `/Example-Files/${data.txt_file}`;
+            downloadLink.textContent = `📄 Download transcript (${data.txt_file})`;
+            downloadLink.target = '_blank';
+            downloadLink.style.display = 'block';
+            downloadLink.style.marginTop = '10px';
+            downloadLink.style.color = '#001158';
+
+            const lastMessage = document.querySelector('#output-panel .chat-reply:last-child .chat-bubble-bot');
+            if (lastMessage) {
+              lastMessage.appendChild(downloadLink);
+            }
+
+            // Show success
+            addMessageToChat('bot', `✅ Transcription complete! ${data.chunks_added} chunks added to knowledge base.`);
+
+          } catch (error) {
+            updateMessageInChat(loadingId, `❌ Error: ${error.message}`);
+          } finally {
+            // Re-enable buttons
+            promptBox.disabled = false;
+            promptBtn.disabled = false;
+            uploadBtn.disabled = false;
+
+            // Reset file input
+            e.target.value = '';
           }
         });
       });
