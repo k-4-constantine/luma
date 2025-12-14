@@ -1,7 +1,7 @@
 # backend/api/routes.py
 """API routes for Luma RAG backend."""
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from backend.models.schemas import ChatRequest, ChatResponse, StatusResponse
 from backend.services.vector_store import VectorStore
 from backend.services.knowledge_graph_service import KnowledgeGraphService
@@ -92,3 +92,58 @@ async def get_knowledge_graph(request: Request):
         return graph_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating knowledge graph: {str(e)}")
+
+
+@router.post("/transcribe")
+async def transcribe_audio(request: Request, file: UploadFile = File(...)):
+    """Transcribe audio file and save as text."""
+    transcription_service = request.app.state.transcription_service
+    document_processor = request.app.state.document_processor
+    vector_store = request.app.state.vector_store
+    embedding_service = request.app.state.embedding_service
+    
+    # Validate file type
+    valid_extensions = [".mp3", ".mp4", ".wav", ".m4a"]
+    if not file.filename.lower().endswith(tuple(valid_extensions)):
+        raise HTTPException(status_code=400, detail="Invalid file type. Supported: .mp3, .mp4, .wav, .m4a")
+    
+    try:
+        # Read audio file
+        audio_bytes = await file.read()
+        
+        # Transcribe audio
+        transcript = await transcription_service.transcribe_audio(audio_bytes)
+        
+        # Save transcript
+        txt_path = await transcription_service.save_transcript(transcript, file.filename)
+        
+        # Auto-process into RAG (reuse existing pattern from main.py)
+        processed_doc = await document_processor.process_document(txt_path)
+        
+        if processed_doc:
+            # Collect ALL chunks (all 3 strategies)
+            all_chunks = (
+                processed_doc.whole_file_chunks +
+                processed_doc.page_chunks +
+                processed_doc.token_chunks
+            )
+            
+            # Generate embeddings
+            chunk_texts = [chunk.content for chunk in all_chunks]
+            embeddings = await embedding_service.embed_texts(chunk_texts)
+            
+            # Store in Weaviate
+            await vector_store.add_chunks(all_chunks, embeddings)
+            chunks_added = len(all_chunks)
+        else:
+            chunks_added = 0
+        
+        return {
+            "filename": file.filename,
+            "transcript": transcript,
+            "txt_file": txt_path.name,
+            "chunks_added": chunks_added
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error transcribing audio: {str(e)}")
