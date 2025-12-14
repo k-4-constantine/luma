@@ -1,4 +1,5 @@
 # frontend/app.py
+import os
 import streamlit as st
 from components.chat_interface import render_chat_interface
 from components.document_panel import render_document_panel
@@ -10,7 +11,8 @@ if "messages" not in st.session_state:
 if "retrieved_documents" not in st.session_state:
     st.session_state.retrieved_documents = []
 if "api_client" not in st.session_state:
-    st.session_state.api_client = APIClient(base_url="http://localhost:8000")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    st.session_state.api_client = APIClient(base_url=backend_url)
 
 st.set_page_config(
     page_title="Luma RAG - Research Assistant",
