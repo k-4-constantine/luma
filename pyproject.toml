@@ -6,6 +6,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "python-pptx",
+    "python-docx",
     "chromadb",
     "requests",
     "python-dotenv",

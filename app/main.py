@@ -1,11 +1,12 @@
 import os
 import re
-import fitz
+import fitz # PyMuPDF
 import glob
 import json
 import requests
 import numpy as np
-import concurrent.futures  # NEW: For parallel processing
+import concurrent.futures
+import docx  # NEW: Import python-docx
 from datetime import datetime
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
@@ -23,6 +24,10 @@ load_dotenv()
 API_KEY = os.getenv("GREENPT_API_KEY")
 API_BASE = os.getenv("GREENPT_API_URL", "https://api.greenpt.ai/v1").rstrip('/')
 CHAT_MODEL = os.getenv("GREENPT_MODEL", "green-l-raw") 
+
+# Define chunk size (in characters) for processing Word documents as streaming documents
+DOC_CHUNK_SIZE = 800  
+DOC_CHUNK_OVERLAP = 100 # Simple overlap to prevent context cutoff
 
 if not API_KEY:
     print("FATAL: GREENPT_API_KEY not set.")
@@ -167,29 +172,83 @@ def process_pptx_file(fpath):
         print(f"Error PPTX {fpath}: {e}")
         return None
 
-def rerank_docs(query: str, documents: List[str], metadatas: List[Dict], top_n=3):
-    if not documents: return [], []
-    # Simplified rerank for brevity
-    return documents[:top_n], metadatas[:top_n]
+# --- NEW: Process DOCX Files with Chunking ---
+def process_docx_file(fpath):
+    try:
+        doc = docx.Document(fpath)
+        core_props = doc.core_properties
+        author = core_props.author if core_props.author else "Unknown Author"
+        created_at = core_props.created.strftime("%Y-%m-%d") if core_props.created else "Unknown Date"
+        
+        all_text_list = []
+        chunks = []
+        
+        # Temporary variable to accumulate current chunk
+        current_chunk_text = ""
+        chunk_counter = 1
+        
+        # Iterate through paragraphs for aggregation
+        for para in doc.paragraphs:
+            text = clean_text(para.text)
+            if not text: continue
+            
+            all_text_list.append(text)
+            
+            # If adding this paragraph doesn't exceed limit, continue adding
+            if len(current_chunk_text) + len(text) < DOC_CHUNK_SIZE:
+                current_chunk_text += " " + text
+            else:
+                # Exceeded limit, package current chunk
+                if current_chunk_text:
+                    chunks.append({
+                        "text": current_chunk_text.strip(),
+                        "page": chunk_counter, # For Word, Page is actually Chunk ID
+                        "source_type": "DOCX"
+                    })
+                    chunk_counter += 1
+                
+                # Start new chunk with some overlap
+                # Simple approach: start from current paragraph, can be optimized later to take latter half of previous paragraph
+                current_chunk_text = text
 
-# --- NEW: Single File Processor for Parallel Execution ---
+        # Process the last unpacked chunk
+        if current_chunk_text:
+            chunks.append({
+                "text": current_chunk_text.strip(),
+                "page": chunk_counter,
+                "source_type": "DOCX"
+            })
+
+        return {
+            "author": author,
+            "created_at": created_at,
+            "full_text": "\n\n".join(all_text_list),
+            "chunks": chunks
+        }
+    except Exception as e:
+        print(f"Error DOCX {fpath}: {e}")
+        return None
+
+# --- Pipeline Processor ---
 def process_single_file_pipeline(fpath):
     fname = os.path.basename(fpath)
     print(f"START Processing: {fname}")
     
     extracted = None
+    # Route by file extension
     if fpath.lower().endswith(".pdf"):
         extracted = process_pdf_file(fpath)
     elif fpath.lower().endswith((".pptx", ".ppt")):
         extracted = process_pptx_file(fpath)
+    elif fpath.lower().endswith(".docx"): # Add docx support
+        extracted = process_docx_file(fpath)
     
+    # Ignore unsupported files or files that failed extraction
     if not extracted or not extracted.get('chunks'):
         return 0
     
-    # Generate Metadata (The slow part)
     ai_meta = generate_file_metadata(extracted['full_text'])
     
-    # Prepare data for DB
     docs = []
     metas = []
     ids = []
@@ -208,7 +267,6 @@ def process_single_file_pipeline(fpath):
         metas.append(meta)
         ids.append(f"{fname}_{item['page']}")
     
-    # Add to DB
     if docs:
         try:
             collection.add(documents=docs, metadatas=metas, ids=ids)
@@ -219,38 +277,35 @@ def process_single_file_pipeline(fpath):
             return 0
     return 0
 
-# --- Modified Ingest Endpoint ---
+# --- Ingest Endpoint ---
 @app.post("/ingest")
 def ingest():
-    # Detect data directory
     data_dir = "./data"
     if os.path.exists("/app_data"): data_dir = "/app_data"
     elif os.path.exists("data"): data_dir = "data"
     
-    all_files = glob.glob(f"{data_dir}/*.pptx") + glob.glob(f"{data_dir}/*.pdf")
+    # Scan all supported formats
+    extensions = ["*.pptx", "*.pdf", "*.docx"]
+    all_files = []
+    for ext in extensions:
+        all_files.extend(glob.glob(f"{data_dir}/{ext}"))
+
     if not all_files:
-        return {"error": "No files found"}
+        return {"error": f"No files found in {data_dir}"}
 
     print(f"Found {len(all_files)} files. Starting parallel ingestion...")
     
-    total_chunks = 0
-    processed_files = 0
-    
-    # Parallel Processing using ThreadPoolExecutor
-    # Adjust max_workers based on your API rate limits (e.g., 3-5 is usually safe)
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         results = list(executor.map(process_single_file_pipeline, all_files))
     
-    for count in results:
-        if count > 0:
-            processed_files += 1
-            total_chunks += count
+    total_chunks = sum(results)
+    processed_files = sum(1 for r in results if r > 0)
 
     return {
         "status": "ok", 
         "files": processed_files, 
         "chunks": total_chunks,
-        "message": "Parallel ingestion complete."
+        "message": "Parallel ingestion complete (PDF, PPTX, DOCX)."
     }
 
 @app.post("/ask")
@@ -259,15 +314,15 @@ def ask(req: AskReq):
     if not results['documents'] or not results['documents'][0]:
         return {"answer": "No info found."}
     
-    # Simplified prompt logic
     docs = results['documents'][0]
     metas = results['metadatas'][0]
     
     context = ""
     for i, (d, m) in enumerate(zip(docs, metas)):
-        context += f"[Source {i+1}: {m['source']}]\n{d}\n\n"
+        # Display Page/Chunk ID
+        source_label = f"Page {m['page']}" if m['file_type'] != "DOCX" else f"Part {m['page']}"
+        context += f"[Source {i+1}: {m['source']} ({source_label})]\n{d}\n\n"
 
-    # Call LLM
     try:
         payload = {
             "model": CHAT_MODEL,
@@ -281,20 +336,16 @@ def ask(req: AskReq):
     except Exception as e:
         return {"error": str(e)}
 
-# --- Modified Graph Endpoint (Fixing the 500 Error) ---
 @app.get("/graph")
 def get_knowledge_graph():
     try:
-        # 1. Get all data
         data = collection.get(include=['metadatas', 'embeddings'])
         if not data or not data.get('metadatas'):
             return {"nodes": [], "links": [], "categories": []}
 
-        # Embedding safety check
         embeddings = data.get('embeddings', [])
         has_embeddings = (embeddings is not None and len(embeddings) > 0)
 
-        # 2. Aggregate Chunks into Files
         files_map = {}
         embedding_dim = 1536 
         if has_embeddings:
@@ -309,23 +360,18 @@ def get_knowledge_graph():
                 files_map[fname] = {
                     "author": meta.get('author', 'Unknown'),
                     "created_at": meta.get('created_at', 'Unknown'),
-                    "keywords": set(), # Use set to store words
+                    "keywords": set(),
                     "embeddings": [],
                     "chunk_count": 0
                 }
             
-            # --- Core modification 1: Keyword tokenization (Token-based) ---
             if 'keywords' in meta and meta['keywords']:
-                # First split by comma into phrases
                 raw_phrases = [k.strip().lower() for k in meta['keywords'].split(',') if k.strip()]
                 for phrase in raw_phrases:
-                    # Then split into words using regex, removing punctuation
                     words = re.findall(r'\w+', phrase)
-                    # Filter out short words (like 'a', 'of', 'in') to avoid meaningless connections
                     valid_words = [w for w in words if len(w) > 2] 
                     files_map[fname]['keywords'].update(valid_words)
                 
-            # Collect Embeddings
             if has_embeddings and i < len(embeddings):
                 curr_emb = embeddings[i]
                 if curr_emb is not None and len(curr_emb) > 0:
@@ -333,7 +379,6 @@ def get_knowledge_graph():
                 
             files_map[fname]['chunk_count'] += 1
 
-        # 3. Build nodes
         nodes = []
         categories = []
         author_map = {} 
@@ -347,7 +392,6 @@ def get_knowledge_graph():
             info = files_map[fname]
             raw_author = info['author'].strip()
             
-            # --- Rule optimization: Author cleaning and categorization ---
             is_unknown = raw_author.lower() in ["unknown author", "unknown", "n/a", "", "none"]
             author_key = "Unknown" if is_unknown else raw_author
             
@@ -355,12 +399,10 @@ def get_knowledge_graph():
                 author_map[author_key] = len(categories)
                 categories.append({"name": author_key})
             
-            # --- Core modification 2: Time-based opacity calculation ---
             opacity = 1.0 
             try:
                 created_dt = None
                 date_str = str(info['created_at']).strip()
-                # Try parsing multiple date formats
                 for fmt in ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y%m%d"]:
                     try:
                         created_dt = datetime.strptime(date_str, fmt)
@@ -370,44 +412,29 @@ def get_knowledge_graph():
                 if created_dt:
                     days_diff = (current_time - created_dt).days
                     if days_diff < 0: days_diff = 0
-                    
-                    # 0-90 days: opacity 1.0 (very bright)
-                    # 90-365 days: opacity 0.8
-                    # >1 year: linear decay, minimum 0.2
-                    if days_diff <= 90:
-                        opacity = 1.0
-                    elif days_diff <= 365:
-                        opacity = 0.8
-                    else:
-                        opacity = max(0.2, 0.8 - ((days_diff - 365) / (365 * 2)))
+                    if days_diff <= 90: opacity = 1.0
+                    elif days_diff <= 365: opacity = 0.8
+                    else: opacity = max(0.2, 0.8 - ((days_diff - 365) / (365 * 2)))
                 else:
-                    opacity = 0.5 # No date info, use middle value
+                    opacity = 0.5 
             except:
                 opacity = 0.5 
 
-            # Calculate average embedding vector
             avg_emb = np.zeros(embedding_dim)
             valid_embs = [e for e in info['embeddings'] if e is not None and len(e) == embedding_dim]
             if valid_embs:
                 avg_emb = np.mean(valid_embs, axis=0)
             file_avg_embeddings.append(avg_emb)
             
-            # --- Node style configuration ---
             item_style = {
                 "opacity": opacity,
                 "borderColor": "#fff" if opacity > 0.8 else "transparent", 
                 "borderWidth": 1
             }
-            
-            # Label style: dark nodes have gray labels to avoid distraction
-            label_style = {
-                "show": True,
-                "color": "#333" if opacity > 0.7 else "#aaa"
-            }
+            label_style = {"show": True, "color": "#333" if opacity > 0.7 else "#aaa"}
 
-            # --- Core modification 3: Force unknown authors to gray ---
             if is_unknown:
-                item_style["color"] = "#cccccc" # Force gray color
+                item_style["color"] = "#cccccc"
                 label_style["color"] = "#999999"
 
             nodes.append({
@@ -420,11 +447,9 @@ def get_knowledge_graph():
                 "label": label_style
             })
 
-        # 4. Build edges (Links)
         links = []
         connection_counts = {i: 0 for i in range(len(nodes))}
         
-        # Calculate similarity matrix
         sim_matrix = np.zeros((len(nodes), len(nodes)))
         if len(file_avg_embeddings) > 0:
             try:
@@ -438,35 +463,26 @@ def get_knowledge_graph():
                 source_file = file_names[i]
                 target_file = file_names[j]
                 
-                # --- Core modification 4: Set intersection matching ---
-                # Since keywords have been split into words and stored in sets, directly get intersection
                 kw_a = files_map[source_file]['keywords']
                 kw_b = files_map[target_file]['keywords']
                 
                 intersection = kw_a.intersection(kw_b)
-                match_count = len(intersection) # Number of common words
+                match_count = len(intersection)
                 
-                # Safely get similarity score
                 raw_score = sim_matrix[i][j]
                 sem_score = float(raw_score) 
                 
-                # Connect if there's at least 1 common word
                 if match_count > 0:
-                    # Line width: more matching words = thicker line (1 word = 1.5, 5 words = 3.5)
                     width = 1 + (match_count * 0.5) 
-                    
                     links.append({
-                        "source": str(i),
-                        "target": str(j),
+                        "source": str(i), "target": str(j),
                         "value": match_count,
                         "lineStyle": {
                             "width": min(width, 8), 
                             "type": "solid",
                             "opacity": 0.6,
-                            "curveness": 0.2,
-                            "color": "source" # Color follows source node
+                            "color": "source"
                         },
-                        # Tooltip shows common words
                         "tooltip": {"formatter": f"Shared: {', '.join(list(intersection)[:10])}"}
                     })
                     connection_counts[i] += 1
@@ -474,31 +490,19 @@ def get_knowledge_graph():
                     
                 elif sem_score > 0.85: 
                     links.append({
-                        "source": str(i),
-                        "target": str(j),
+                        "source": str(i), "target": str(j),
                         "value": round(sem_score, 2),
                         "lineStyle": {
-                            "width": 1,
-                            "type": "dashed", 
-                            "color": "#ccc",
-                            "opacity": 0.5,
-                            "curveness": -0.2
+                            "width": 1, "type": "dashed", "color": "#ccc", "opacity": 0.5
                         },
                         "tooltip": {"formatter": f"Semantic Similarity: {sem_score:.2f}"}
                     })
 
-        # 5. Adjust node size based on connection count
         for i in range(len(nodes)):
-            size = 10 + (connection_counts[i] * 2)
-            nodes[i]["symbolSize"] = min(size, 70)
+            nodes[i]["symbolSize"] = min(10 + (connection_counts[i] * 2), 70)
 
-        return {
-            "nodes": nodes,
-            "links": links,
-            "categories": categories
-        }
+        return {"nodes": nodes, "links": links, "categories": categories}
     except Exception as e:
-        print(f"Graph Error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error generating knowledge graph: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Graph Error: {str(e)}")
